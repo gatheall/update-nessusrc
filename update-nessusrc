@@ -12,12 +12,22 @@ update-nessusrc - Updates Nessus configuration file with new plugins.
   #   nmap_wrapper scanners.
   update-nessusrc ~/.nessusrc
 
+  # same as above but also print a summary of the changes.
+  update-nessusrc -s ~/.nessusrc
+
   # produces an alternate nessusrc without replacing original and
   #   also prints lots of debugging info.
   update-nessusrc -d ~/.nessusrc
 
-  # updates special nessusrc w/ only DoS plugins and tcp connect() scanner.
+  # updates a special nessusrc w/ only DoS plugins and tcp connect() scanner.
   update-nessusrc -c "denial,destructive_attack,kill_host" -i 10335 ~/.nessusrc-dos
+
+  # updates a special nessusrc w/ all categories of plugins associated with
+  #   SMTP servers.
+  update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp
+
+  # updates a special nessusrc to scan for SANS' Top 20 Vulnerabilities.
+  update-nessusrc -c "" -f "" -t ~/.nessusrc-top20
 
 
 =head1 DESCRIPTION
@@ -34,8 +44,10 @@ one or more configurable variables or by commandline arguments:
 
     Variable            Commandline         Purpose
     @plugin_cats        -c|--categories     Enables plugin categories.
+    @plugin_fams        -f|--families       Enables plugin families.
     @plugin_excludes    -x|--excludes       Excludes plugin ids explicitly.
     @plugin_includes    -i|--includes       Includes plugin ids explicitly.
+    n/a                 -t|--top20          Enables plugins for SANS' Top 20.
 
 Plugins explicitly excluded will never be used regardless of the other
 variables or commandline options.  Also, commandline arguments take
@@ -43,34 +55,50 @@ precedence over variables defined in the script; thus, for example, you
 can disable all plugin categories by using the commandline argument C<-c
 "">. 
 
-For a list of all plugin ids, see L<http://cgi.nessus.org/plugins/>. 
-For a list of plugin categories, see the file L<doc/WARNING.En> in the
-nessus-core source. 
+For a list of plugin ids, see L<http://cgi.nessus.org/plugins/>; for
+plugin families, see
+L<http://cgi.nessus.org/plugins/dump.php3?viewby=family>; and for plugin
+categories, see the file L<doc/WARNING.En> in the nessus-core source. 
 
 Other settings include:
 
     Variable            Commandline         Purpose
     $DEBUG              -d|--debug          Turn on debugging.  NB: leaves
                                                 rc file unchanged.
+    $summary            -s|--summary        Print a summary report of 
+                                                changes made in plugins.
 
 update-nessusrc is written in Perl and calls the Nessus client to obtain
-a list of current plugins (using the option "-p").  It should work on any
-unix-like system with Perl 5 and Nessus 1.1.14 or better. 
+a list of current plugins (using the option "-qp").  It should work on
+any unix-like system with Perl 5 and Nessus 1.1.14 or better.  It also
+requires the Perl module C<LWP::UserAgent> when generating configuration
+files for the SANS Top 20 list.  Note that it is not included with the
+default Perl distribution so you may need to install it yourself; visit
+CPAN (L<http://search.cpan.org/>) for help. 
 
 
 =head1 KNOWN BUGS AND CAVEATS
 
-Currently, I am not aware of any bugs in this script.  
+Currently, I am not aware of any bugs in this script. 
 
 This script is not a substitute for the Nessus client in terms of
-generating a configuration file.  On one hand, the configuration file
-must contain lines delimiting the SCANNER_SET and PLUGIN_SET sections
-for them to be updated.  On the other, several plugins require
-additional configuration - simply adding them to the list of plugins
-used may not be optimal.
+managing a configuration file or server certificates.  On one hand, it
+does not handle cases in which the server cert needs to be verified by
+the user.  On the other, several plugins require additional
+configuration - simply adding them to the list of plugins used may not
+be optimal. 
 
-This script does not report the changes made to the nessusrc file, it
-just does them. 
+If you absolutely can not run the client as a GUI, keep in mind that if
+you are using SSL to encrypt client-server communications, you will need
+to run the client at least once to connect to the server and accept the
+certificate it presents, otherwise, update-nessusrc will hang when run. 
+One way to do this is to run update-nessusrc in debug mode and break out
+of it when it displays the server's certificate; then, run the client
+manually using the same commandline as reported by update-nessusrc. 
+
+To ensure an accurate scan for the SANS' Top 20 vulnerabilities, you
+must make sure C<auto_enable_dependencies> is set to C<yes> in the
+configuration file; update-nessusrc will B<not> do this for you. 
 
 Finally, realize that this script will hold a userid and password used
 to connect to a Nessus server; protect it accordingly!
@@ -104,7 +132,18 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
-17-Feb-2003, George A. Theall
+21-May-2003, v2.00, George A. Theall
+    o Changed major portions of code.
+    o Am now sorting plugins by id when writing new configuration file.
+    o Added support for configuration files lacking PLUGIN_SET and/or 
+      SCANNER_SET sections.
+    o Added support for enabling / disabling plugins based on family.
+    o Added support for enabling plugins associated with the SANS / FBI 
+      Top 20 list of vulnerabilities.
+    o Added support for pseudo category / family "_all_".
+    o Added support for summarizing changes made.
+
+17-Feb-2003, v1.10, George A. Theall
     o Am now allowing nessusd port to be configured.
     o Removed support for '-s' option since I discovered Nessus
       actually treats plugins not listed in a configuration file as
@@ -113,12 +152,12 @@ it under the same terms as Perl itself.
     o Am now reporting an error if the nessus client produces an error,
       as opposed to can't be run.
 
-19-Jan-2003, George A. Theall
+19-Jan-2003, v1.01, George A. Theall
     o Am now passing along the specified rcfile when invoking the 
       client so settings such as cert_file and key_file in that
       file will be used.
 
-13-Jan-2003, George A. Theall
+13-Jan-2003, v1.00, George A. Theall
     o Initial version.
 
 =cut
@@ -156,6 +195,32 @@ my @plugin_cats = (                         # categories of plugins to enable
     'settings',                             # - sets options but doesn't do tests
     'unknown',                              # - ?
 );
+my @plugin_fams = (                         # families of plugins to enable
+    'Backdoors',
+    'CGI abuses',
+    'CISCO',
+    'Default Unix Accounts',
+    'Denial of Service',
+    'FTP',
+    'Finger abuses',
+    'Firewalls',
+    'Gain a shell remotely',
+    'Gain root remotely',
+    'General',
+    'Misc.',
+    'NIS',
+    'Netware',
+    'Port scanners',
+    'RPC',
+    'Remote file access',
+    'SMTP problems',
+    'SNMP',
+    'Settings',
+    'Untested',
+    'Useless services',
+    'Windows',
+    'Windows : User management',
+);
 my @plugin_excludes = (
     # empty
 );
@@ -163,34 +228,55 @@ my @plugin_includes = (
     '10180',                                # Ping the remote host
     '10336',                                # nmap_wrapper scan
 );
+# nb: sample http proxy settings
+#     - no proxy.
+my $proxy = '';
+#     - unauthenticated proxy via proxy1.domain.com.
+# my $proxy = 'http://proxy1.domain.com';
+#     - authenticated as user 'user' w/ password 'pass' via proxy2.domain.com.
+# my $proxy = 'http://user:pass@proxy2.domain.com';
+my $summary = 0;                            # Print summary report?
+my $timeout = 120;                          # timeout used w/ http GET
+my $top20_url = 'http://www.sans.org/top20/';   # location of SANS' Top20
+my $useragent = 'update-nessusrc/2.00';     # used when requesting SANS' Top20
 
 
 ############################################################################
 # Process commandline arguments.
 my %options = (
-    'debug'  => \$DEBUG,
+    'debug'    => \$DEBUG,
+    'summary'  => \$summary,
 );
 GetOptions(
     \%options,
     "categories|c=s@",
+    "families|f=s@",
     "debug|d!",
     "help|?!",
     "excludes|x=s@",
     "includes|i=s@",
+    "summary|s!",
+    "top20|t!",
 );
 my $rcfile = shift || '';
+$options{help} = 1 
+    if ($options{top20} and ($options{categories} or $options{families}));
 if (! -f $rcfile or $options{help}) {
-    print "Usage: $0 [-d|--debug] [-x|--excludes \"ids\"] [-i|--includes \"ids\"] [-c|--categories \"cats\"] rcfile\n";
+    print "Usage: $0 [-c|--categories \"cats\"] [-d|--debug] [-f|--families \"fams\"] [-i|--includes \"ids\"] [-s|--summary] [-x|--excludes \"ids\"] rcfile\n",
+          "  or\n",
+          "       $0 [-d|--debug] [-i|--includes \"ids\"] [-s|--summary] [-t|--top20] [-x|--excludes \"ids\"] rcfile\n";
     exit(9);
 }
 if ($rcfile =~ /^([\/\w\d\-\._]+)$/) {
     $rcfile = $1;
 }
 else {
-    print STDERR "*** invalid characters in argument '$rcfile'! ***\n";
+    croak "Invalid characters in argument '$rcfile'!\n";
 }
 @plugin_cats = split(/,\s*/, join(',', @{$options{categories}})) 
     if ($options{categories});
+@plugin_fams = split(/,\s*/, join(',', @{$options{families}})) 
+    if ($options{families});
 @plugin_excludes = split(/,\s*/, join(',', @{$options{excludes}}))
     if ($options{excludes});
 @plugin_includes = split(/,\s*/, join(',', @{$options{includes}}))
@@ -198,31 +284,49 @@ else {
 
 
 ############################################################################
-# Get list of plugins.
+# Get list of plugins currently available.
+print STDERR "debug: getting list of available plugins.\n" if $DEBUG;
 my $cmd = "nessus -c $rcfile -qp $nessusd_host $nessusd_port $nessusd_user $nessusd_user_pass";
-print "debug: running '$cmd'\n" if $DEBUG;
-our(@plugin_set, @scanner_set);         # nb: must be valid globals!
-my @errors;
+print STDERR "debug:   running '$cmd'\n" if $DEBUG;
+my(@errors, %plugin);
+our(@plugins_new, @scanners_new);       # nb: must be valid globals!
 open(CMD, "$cmd 2>&1 |") or croak "Can't run '$cmd' - $!\n";
 while (<CMD>) {
     chomp;
-    print "debug:   >>$_<<\n" if $DEBUG;
-    unless (/^\d+\|/) {                 # nb: doesn't start w/ id => error
-        push(@errors, $_);              #     so save it for later
-        next;                           #     and skip rest of processing
+    print STDERR "debug:   reading >>$_<<\n" if $DEBUG;
+
+    # If line doesn't start with id, save it for later but otherwise skip it.
+    unless (/^\d+\|/) {
+        push(@errors, $_);
+        next;
     }
-    my($id, $cat) = (split(/\|/, $_))[0,3];
-    my $use = 'no';
-    if ((grep(/^$cat$/i, @plugin_cats) or grep(/^$id$/, @plugin_includes)) and
-            !grep(/^$id$/, @plugin_excludes)) {
-        $use = 'yes';
+
+    # nb: field order is specified in _cli_dump_plugins() in 
+    #     nessus-core/nessus/cli.c, at least as of Nessus 2.0.5.
+    my($id, @fields) = split(/\|/, $_, 9);
+    croak "Can't parse plugins list ($_)!\n" unless (@fields == 8);
+    print STDERR "debug:     id=>>$id<<\n" if $DEBUG;
+    foreach my $label (
+                'family', 
+                'name', 
+                'category', 
+                'copyright', 
+                'summary', 
+                'version', 
+                'cve-id', 
+                'description'
+            ) {
+        $_ = shift @fields;
+        # nb: some fields we'll skip to save memory.
+        next if (grep(/^$label$/, ('copyright', 'description')));
+        $plugin{$id}{$label} = $_;
+        print STDERR "debug:     $label=>>$_<<\n" if $DEBUG;
     }
-    print "debug:   id=>>$id<<; category=>>$cat<<; use=>>$use<<\n" if $DEBUG;
-    if ($cat eq 'scanner') {
-        push(@scanner_set, " $id = $use");
+    if ($plugin{$id}{'category'} eq 'scanner') {
+        push(@scanners_new, $id);
     }
     else {
-        push(@plugin_set, " $id = $use");
+        push(@plugins_new, $id);
     }
 }
 close(CMD);
@@ -235,53 +339,211 @@ if ($rc) {
     }
     croak "$errmsg (rc=$rc)!\n";
 }
+@scanners_new = sort(@scanners_new);
+@plugins_new = sort(@plugins_new);
 
 
 ############################################################################
-# Regenerate nessusrc file.
-open(OLD, $rcfile) or croak "Can't read $rcfile - $!\n";
-my($mode, $uid, $gid) = (stat($rcfile))[2, 4, 5];
-open(NEW, ">$rcfile.$$") or croak "Can't write to $rcfile.$$ - $!\n";
-chmod $mode, "$rcfile.$$" or croak "Can't change mode of new rcfile to $mode - $!\n";
-chown $uid, $gid, "$rcfile.$$" or croak "Can't change ownership of new rcfile to $uid:gid - $!\n";
-my $skip = 0;
-while (<OLD>) {
-    chomp;
-    print "debug: reading >>$_<<\n" if $DEBUG;
-    unless ($skip) {
-        print "debug: writing >>$_<<\n" if $DEBUG;
-        print NEW "$_\n";
+# Determine whether plugins should now be enabled.
+if ($options{top20}) {
+    use LWP::UserAgent;
+
+    # Retrieve Top 20 list.
+    print STDERR "debug: retrieving '$top20_url'.\n" if $DEBUG;
+    my $ua = LWP::UserAgent->new(
+        agent => $useragent,
+        timeout => $timeout,
+    );
+    if (defined($proxy)) {
+        $ua->proxy('http', $proxy);
+    }
+    my $response = $ua->get(
+        $top20_url,
+    );
+    unless ($response->is_success) {
+        croak "*** can't retrieve '$top20_url' - ", $response->status_line, "! ***\n";
     }
 
-    # Determine if processing a plugin or scanner set.
+    # Extract CVE / CAN numbers.
     #
-    # nb: names of the arrays with plugin ids must agree with $2!
-    if (/^(begin|end)\((PLUGIN_SET|SCANNER_SET)\)$/i) {
-        if ($1 =~ /begin/i) {
-            $skip = 1;
-        }
-        # At the end of the set so print updated list of plugins.
-        else {
-            my $line = $_;
-            $skip = 0;
-            no strict 'refs';
-            foreach (@{lc($2)}) {
-                print "debug: writing >>$_<<\n" if $DEBUG;
-                print NEW "$_\n";
+    # nb: parsing the HTML would ensure accuracy, but errors in the
+    #     HTML suggest a simpler approach.
+    #
+    # nb: keep in mind CVE / CAN numbers may be duplicated since the top 
+    #     20 list is actually two top 10 lists (for Windows and Unix).
+    my(%top20_cves, %unique);
+    my @top20_cves = grep(
+        !/(CVE|CAN)$/i && ($_ = uc($_)) && !$unique{$_}++,
+        sort($response->content =~ /cvename=((cve|can)-\d{4}-\d{4})\b/ig)
+    );
+
+    # Update arrays to use plugins associated with Top 20 vulnerabilities.
+    @plugin_cats = ('settings');
+    @plugin_fams = ('Settings');
+    foreach my $id (keys %plugin) {
+        next unless (exists $plugin{$id}{'cve-id'});
+        my $cve = $plugin{$id}{'cve-id'};
+        foreach my $top20_cve (@top20_cves) {
+            if ($cve =~ /\b$top20_cve\b/i) {
+                $top20_cves{$top20_cve} .= "$id & ";
+                push(@plugin_includes, $id);
             }
-            use strict 'refs';
-            # nb: we need to explicitly terminate the set!
-            print "debug: writing >>$line<<\n" if $DEBUG;
-            print NEW "$line\n";
         }
     }
+    print STDERR "debug: Top 20 vulnerabilities matched with plugins:\n" if $DEBUG;
+    foreach my $cve (sort keys %top20_cves) {
+        my $id = $top20_cves{$cve};
+        $id =~ s/ & $//;
+        print STDERR "debug:   $cve -> plugin(s) $id\n" if $DEBUG;
+    }
+
+    if (grep(!exists $top20_cves{$_}, @top20_cves)) {
+        print "Note: No Plugins are Available for the Following Top 20 Vulnerabilities:\n",
+              "  ", join("\n  ", grep(!exists $top20_cves{$_}, @top20_cves)),
+            "\n",
+            "\n";
+    }
 }
-close(NEW);
-close(OLD);
+print STDERR "debug: determining whether to enable plugins.\n" if $DEBUG;
+foreach my $id (@scanners_new, @plugins_new) {
+    my $category = $plugin{$id}{category};
+    my $family = $plugin{$id}{family};
+
+    my $use = 'no';
+    # nb: use plugin if...
+    $use = 'yes' 
+        if (
+            # the plugin was not explicitly excluded and...
+            !grep(/^$id$/, @plugin_excludes) and
+            (
+                # either the Id is explicitly included or...
+                grep(/^$id$/, @plugin_includes) or 
+                # the family and category both match what was selected.
+                (
+                    (grep(/^$family$/, @plugin_fams) or grep(/^_all_$/i, @plugin_fams)) and
+                    (grep(/^$category$/i, @plugin_cats) or grep(/^_all_$/i, @plugin_cats))
+                )
+            )
+        );
+    print STDERR "debug:   id=>>$id<<; ",
+                    "family=>>", $plugin{$id}{family}, "<<; ",
+                    "category=>>", $plugin{$id}{category}, "<<; ",
+                    "use=>>$use<<\n" if $DEBUG;
+    # nb: status is used to track both old and new status.
+    $plugin{$id}{status} = ($use eq 'yes') * 10;
+}
+
+
+############################################################################
+# Read old configuration file.
+print STDERR "debug: reading contents of existing config file '$rcfile'.\n" if $DEBUG;
+open(RC, $rcfile) or croak "Can't read $rcfile - $!\n";
+# nb: lines from the config file will be stored as:
+#     @plugins_old - non-scanner plugin settings
+#     @scanners_old - scanner plugin settings
+#     @lines - everything else
+my(@lines, $set, $skip);
+our(@plugins_old, @scanners_old);       # nb: must be valid globals!
+while (<RC>) {
+    chomp;
+    print STDERR "debug:   reading >>$_<<\n" if $DEBUG;
+    push(@lines, $_) unless ($skip);
+
+    # If starting to process a plugin or scanner set, initialize some vars.
+    if (/^begin\((PLUGIN|SCANNER)_SET\)$/i) {
+        $set = lc($1) . 's';
+        $skip = 1;
+    }
+    # If at end of set, reset some vars.
+    elsif (/^end\((PLUGIN|SCANNER)_SET\)$/i) {
+        $set = "";
+        $skip = 0;
+        push(@lines, $_);               # nb: we'd otherwise skip this!!!
+    }
+    # If in set, keep track of old plugins for later.
+    elsif ($set and /^\s*(\d+)\s*=\s*(yes|no)\s*$/) {
+        no strict 'refs';
+        push(@{"${set}_old"}, $1);
+        use strict 'refs';
+        # nb: old is used to keep track of old plugins if summarizing.
+        $plugin{$1}{old} = 1 if ($summary);
+        # nb: status is used to track both old and new status.
+        $plugin{$1}{status} += ($2 =~ /^yes$/i);
+    }
+}
+close(RC);
+
+# Add SCANNER_SET and/or PLUGIN_SET sections if missing.
+push(@lines, 'begin(SCANNER_SET)', 'end(SCANNER_SET)') unless (@scanners_old);
+push(@lines, 'begin(PLUGIN_SET)', 'end(PLUGIN_SET)') unless (@plugins_old);
+
+
+############################################################################
+# Summarize changes.
+if ($summary) {
+    print "Summary of Changes ", 
+        ($DEBUG ? "to be " : ""), 
+        "Made to '$rcfile':\n";
+    foreach my $id (sort keys %plugin) {
+        my $status;
+        if (!exists $plugin{$id}{old}) {
+            $status = 'added / ' .
+                ($plugin{$id}{status} == 10 ? 'on' : 'off');
+        }
+        # nb: all new plugins have names.
+        elsif (!exists $plugin{$id}{name}) {
+            $status = 'removed';
+        }
+        elsif ($plugin{$id}{status} == 10) {
+            $status = 'enabled';
+        }
+        elsif ($plugin{$id}{status} == 1) {
+            $status = 'disabled';
+        }
+        else {
+            next;
+        }
+        print "  Id:       ", $id, "\n",
+              "  Name:     ", ($plugin{$id}{name}     || 'n/a'), "\n",
+              "  Family:   ", ($plugin{$id}{family}   || 'n/a'), "\n",
+              "  Category: ", ($plugin{$id}{category} || 'n/a'), "\n",
+              "  Summary:  ", ($plugin{$id}{summary}  || 'n/a'), "\n",
+              "  Version:  ", ($plugin{$id}{version}  || 'n/a'), "\n",
+              "  CVE-ID:   ", ($plugin{$id}{'cve-id'} || 'n/a'), "\n",
+              "  Status:   ", $status, "\n",
+              "\n";
+    }
+}
+
+
+############################################################################
+# Regenerate configuration file.
+#
+# nb: in debug mode, configuration file will not be replaced; instead,
+#     a separate file will be created.
+my($mode, $uid, $gid) = (stat($rcfile))[2, 4, 5];
+$rcfile .= ".$$" if ($DEBUG);
+open(RC, ">$rcfile") or croak "Can't write to $rcfile - $!\n";
 if ($DEBUG) {
-    print "debug: updated nessusrc available as '$rcfile.$$'\n";
+    chmod $mode, "$rcfile" or 
+        croak "Can't change mode of $rcfile to $mode - $!\n";
+    chown $uid, $gid, "$rcfile" or 
+        croak "Can't change ownership of $rcfile to $uid:gid - $!\n";
 }
-else {
-    # This has the effect of removing the old file.
-    rename "$rcfile.$$", $rcfile;
+foreach (@lines) {
+    print RC "$_\n";
+    if (/^begin\((PLUGIN|SCANNER)_SET\)/) {
+        $set = lc($1) . 's';
+        no strict 'refs';
+        foreach my $id (@{"${set}_new"}) {
+            print RC " $id = ",
+                ($plugin{$id}{status} >= 10 ? 'yes' : 'no'),
+                "\n";
+        }
+        use strict 'refs';
+    }
+}
+close(RC);
+if ($DEBUG) {
+    print STDERR "debug: updated configuration file available as '$rcfile'\n";
 }

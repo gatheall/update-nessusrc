@@ -38,14 +38,18 @@ When used periodically along with <CODE>nessus-update-plugins</CODE>, it
 ensures your client configuration files are as current as possible.</P>
 
 <P><B>update-nessusrc</B> is written in Perl and calls the Nessus client
-to obtain a list of current plugins (using the option <CODE>-p</CODE>). 
+to obtain a list of current plugins (using the option <CODE>-qp</CODE>). 
 It should work on any unix-like system with Perl 5 and Nessus 1.1.14 or
-better.</P>
+better.  It also requires the Perl module <CODE>LWP::UserAgent</CODE>
+when generating configuration files for the SANS Top 20 list.  Note that
+it is not included with the default Perl distribution so you may need to
+install it yourself; visit <A HREF="http://search.cpan.org/">CPAN</A>
+for help.</P>
 
 <P>Note: there is also a Python script named <A
 HREF="http://www.edgeos.com/software/">update-nessusrc</A>, written by
-Jay Jacobson.  Currently, it offers much the same functionality as this
-script but also supports updates based on plugin families.</P>
+Jay Jacobson.  Currently, it offers functionality similar to this
+script.</P>
 
 
 <H3>Installation</H3>
@@ -61,12 +65,12 @@ script but also supports updates based on plugin families.</P>
       and will hold a userid and password used to connect with a Nessus 
       server.</LI>
    <LI>Edit the script and set <CODE>$nessusd_host</CODE>, 
-      <CODE>$nessusd_port</CODE>, <CODE>$nessusd_user</CODE>, 
-      and <CODE>$nessusd_user_pass</CODE> according to your environment. 
-      Also, you may wish to adjust the location of the perl interpreter 
-      in the first line, <CODE>@plugin_cats</CODE>, 
-      <CODE>@plugin_excludes</CODE>, and/or <CODE>@plugin_includes</CODE> 
-      to suit your tastes.</LI>
+      <CODE>$nessusd_port</CODE>, <CODE>$nessusd_user</CODE>, and
+      <CODE>$nessusd_user_pass</CODE>, and <CODE>$proxy</CODE> according 
+      to your environment. Also, you may wish to adjust the location of 
+      the perl interpreter in the first line, <CODE>@plugin_cats</CODE>, 
+      <CODE>@plugin_fams</CODE>, <CODE>@plugin_excludes</CODE>, and/or 
+      <CODE>@plugin_includes</CODE> to suit your tastes.</LI>
 </OL>
 
 
@@ -74,69 +78,82 @@ script but also supports updates based on plugin families.</P>
 
 <P>The script offers considerable control in the selection of plugins -
 either by editing variables in the script or by commandline arguments,
-you can include entire categories of plugins, include specific plugins,
-or exclude specific plugins.</P>
+you can include entire categories and families of plugins, include
+specific plugins, or exclude specific plugins.</P>
 
 <P>There are several commandline arguments you can use to override 
 variables defined in the script itself:</P>
 
 <BLOCKQUOTE>
 <DL>
+   <DT>-c, --categories &lt;plugin categories&gt;</DT>
+   <DD>Enable plugins in the specified categories, overriding
+      <CODE>@plugin_cats</CODE>. As a special case, <CODE>_all_</CODE>
+      represents all plugin categories.</DD>
+
    <DT>-d, --debug</DT>
    <DD>Display debugging messages while running.  Creates a scratch
       configuration file but doesn't actually replace the original
       one.</DD>
 
-   <DT>-c, --categories &lt;plugin categories&gt;</DT>
-   <DD>Enable all plugins in the specified categories, overriding
-      <CODE>@plugin_cats</CODE>. Valid categories are:
-      <UL>
-         <LI><I>attack</I> - may steal info but does no harm.</LI>
-         <LI><I>denial</I> - tries to perform a DoS.</LI>
-         <LI><I>destructive_attack</I> - tries to kill services / software.</LI>
-         <LI><I>infos</I> - gathers info about services / software.</LI>
-         <LI><I>kill_host</I> - tries to kill OS (starting with Nessus 1.3.0).</LI>
-         <LI><I>mixed</I> - mixed attack.</LI>
-         <LI><I>scanner</I> - port scanners / ping.</LI>
-         <LI><I>settings</I> - sets options but doesn't do tests. NB: 
-            Nessus will always enable this category.</LI>
-      </UL>
-      Note, though, that the actual categories available to you will depend 
-      on the version of Nessus installed.</DD>
-
-   <DT>-x, --excludes &lt;plugin ids&gt;</DT>
-   <DD>Exclude the specified plugin ids, overriding 
-      <CODE>@plugin_excludes</CODE>.  Note: plugins explicitly excluded 
-      will never be used regardless of the other variables or 
-      commandline options.</DD>
+   <DT>-f, --families &lt;plugin families&gt;</DT>
+   <DD>Enable plugins in the specified families, overriding
+      <CODE>@plugin_fams</CODE>. As a special case, <CODE>_all_</CODE>
+      represents all plugin families.</DD>
 
    <DT>-i, --includes &lt;plugin ids&gt;</DT>
    <DD>Include the specified plugin ids, overriding 
       <CODE>@plugin_includes</CODE>.</DD>
+
+   <DT>-s, --summary</DT>
+   <DD>Display a summary of the changes, detailing plugins added, removed,
+      enabled, or disabled.</DD>
+
+   <DT>-t, --top20</DT>
+   <DD>Include plugins to scan for the 
+      <A HREF="http://www.sans.org/top20/">SANS' Top 20 
+      Vulnerabilities</A>.</DD>
+
+   <DT>-x, --excludes &lt;plugin ids&gt;</DT>
+   <DD>Exclude the specified plugin ids, overriding 
+      <CODE>@plugin_excludes</CODE>.</DD>
 </DL>
 </BLOCKQUOTE>
 
 <P>Notes:</P>
 <UL>
    <LI>For a list of all plugin ids, see <A
-      HREF="http://cgi.nessus.org/plugins/">http://cgi.nessus.org/plugins/</A>. 
-      For a list of plugin categories, see the file <CODE>doc/WARNING.En</CODE>
-      in the nessus-core source.</LI>
+      HREF="http://cgi.nessus.org/plugins/">http://cgi.nessus.org/plugins/</A>;
+      for plugin families, see 
+      <A HREF="http://cgi.nessus.org/plugins/dump.php3?viewby=family">http://cgi.nessus.org/plugins/dump.php3?viewby=family</A>; 
+      and for plugin categories, see the file <CODE>doc/WARNING.En</CODE>
+      in the nessus-core source.  Possible category and family names will
+      both change over time, especially the latter: category names may vary 
+      with the version of Nessus you use while family names are specified 
+      by plugin writers as an arbitrary string using the 
+      <CODE>script_family</CODE> function. Thus, you may wish to 
+      periodically review the specific categories and families you use with
+      this script.
 
-   <LI>Plugins classified as <CODE>settings</CODE> will always be run 
+   <LI>Nessus always runs plugins in the category <CODE>settings</CODE>
       regardless of what's in the configuration file.  These plugins
-      only update the knowledge bases, they do not actually send any 
+      only update the knowledge bases; they do not actually send any 
       packets.</LI>
 
    <LI>Commandline arguments take precedence over variables defined in the
       script. For example, you can disable all plugin categories by using
       the commandline argument <CODE>-c ""</CODE>.</LI>
 
+   <LI><B>Plugin categories and families are considered together when 
+      deciding whether to include plugins.</B>  For example, choosing
+      <CODE>-c denial -f "SMTP problems"</CODE> will run only denial of
+      service attacks specifically associated with SMTP servers.</LI>
+
    <LI>Plugins explicitly excluded will never be used regardless of the other
       variables or commandline options.</LI>
 
-   <LI>Multiple categories / plugin ids can be specified either by a
-      comma-delimited string or by multiple argument pairs.  For example,
+   <LI>Multiple categories / families / plugin ids can be specified either by
+      a comma-delimited string or by multiple argument pairs.  For example,
       <CODE>-c "settings,infos"</CODE> is equivalent to <CODE>-c settings -c
       infos</CODE>.</LI>
 </UL>
@@ -148,12 +165,22 @@ variables defined in the script itself:</P>
    <DD>updates default nessusrc w/ non-destructive plugins and ping /
       nmap_wrapper scanners.</DD>
 
+   <DT><CODE>update-nessusrc -s ~/.nessusrc</CODE></DT>
+   <DD>same as above but also print a summary of the changes.</DD>
+
    <DT><CODE>update-nessusrc -d ~/.nessusrc</CODE></DT>
    <DD>produces an alternate nessusrc without replacing original and
       also prints lots of debugging info.</DD>
 
    <DT><CODE>update-nessusrc -c "denial,destructive_attack" -i 10335 ~/.nessusrc-dos</CODE></DT>
-   <DD>updates special nessusrc w/ DoS plugins and tcp connect() scanner.</DD>
+   <DD>updates a special nessusrc w/ DoS plugins and tcp connect() scanner.</DD>
+
+   <DT><CODE>update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp</CODE></DT>
+   <DD>updates a special nessusrc w/ all categories of plugins associated with
+      SMTP servers.</DD>
+
+   <DT><CODE>update-nessusrc -t ~/.nessusrc-top20</CODE></DT>
+   <DD>updates a special nessusrc to scan for SANS' Top 20 Vulnerabilities.</DD>
 </DL>
 </BLOCKQUOTE>
 
@@ -163,30 +190,25 @@ variables defined in the script itself:</P>
 <P>Currently, I am not aware of any bugs in this script.</P>
 
 <P>This script is not a substitute for the Nessus client in terms of
-managing a configuration file or server certificates.  On one hand,
-several plugins require additional configuration - simply adding them to
-the list of plugins used may not be optimal.  On the other, the script
-currently makes no provisions for cases in which the client prompts the
-user with information about server certificates.  If you absolutely can
-not run the client as a GUI, here are some points to keep in mind:</P>
+managing a configuration file or server certificates.  On one hand, it
+does not handle cases in which the server cert needs to be verified by
+the user.  On the other, several plugins require additional
+configuration - simply adding them to the list of plugins used may not
+be optimal.</P>
 
-<UL>
-   <LI><B>update-nessusrc</B> requires that the configuration file 
-      contain lines delimiting the <CODE>SCANNER_SET</CODE> and 
-      <CODE>PLUGIN_SET</CODE> sections for them to be replaced. It 
-      will not add them if they are not already present.</LI>
+<P>If you absolutely can not run the client as a GUI, keep in mind that
+if you are using SSL to encrypt client-server communications, you will
+need to run the client at least once to connect to the server and accept
+the certificate it presents, otherwise, <B>update-nessusrc</B> will hang
+when run.  One way to do this is to run <B>update-nessusrc</B> in debug
+mode and break out of it when it displays the server's certificate;
+then, run the client manually using the same commandline as reported by
+<B>update-nessusrc</B>.</P>
 
-   <LI>If you are using SSL to encrypt client-server communications,
-      you will need to run the client at least once to connect to the
-      server and accept the certificate it presents, otherwise, 
-      <B>update-nessusrc</B> will hang when run.  One way to do this
-      is to run <B>update-nessusrc</B> in debug mode and break out of it
-      when it displays the server's certificate; then, run the client 
-      manually using the same commandline as <B>update-nessusrc</B>.</LI>
-</UL>
-
-<P>This script does not report the changes made to the nessusrc file, it
-just does them.</P>
+<P>To ensure an accurate scan for the SANS' Top 20 vulnerabilities, you
+must make sure <CODE>auto_enable_dependencies</CODE> is set to
+<CODE>yes</CODE> in the configuration file; <B>update-nessusrc</B> will
+<B><I>not</I></B> do this for you.</P>
 
 <P>Finally, realize that this script will hold a userid and password
 used to connect to a Nessus server; protect it accordingly!</P>
@@ -210,6 +232,24 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Version </TH>
       <TH ALIGN="left">Verification </TH>
       <TH ALIGN="left">Notes<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="left" VALIGN="top">21-May-2003 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.00">2.00</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.00.md5">MD5</A> / 
+         <A HREF="update-nessusrc-2.00.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Changed major portions of code.</LI>
+         <LI>Am now sorting plugins by id when writing new configuration 
+            file.</LI>
+         <LI>Added support for configuration files lacking PLUGIN_SET
+            and/or SCANNER_SET sections.</LI>
+         <LI>Added support for enabling / disabling plugins based on 
+            family.</LI>
+         <LI>Added support for pseudo category / family <CODE>_all_</CODE>.</LI>
+         <LI>Added support for summarizing changes made.</LI>
+      </UL></TD>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">17-Feb-2003 </TH>
