@@ -2,6 +2,7 @@
 <HEAD>
 <TITLE>update-nessusrc</TITLE>
 <LINK REV="made" HREF="mailto:theall@tifaware.com">
+<LINK REL="shortcut icon" HREF="http://www.tifaware.com/favicon.ico">
 </HEAD>
 
 <!--#include virtual="/header.html"-->
@@ -40,16 +41,19 @@ ensures your client configuration files are as current as possible.</P>
 <P><B>update-nessusrc</B> is written in Perl and calls the Nessus client
 to obtain a list of current plugins (using the option <CODE>-qp</CODE>). 
 It should work on any unix-like system with Perl 5 and Nessus 1.1.14 or
-better.  It also requires the Perl module <CODE>LWP::UserAgent</CODE>
-when generating configuration files for the SANS Top 20 list.  Note that
-it is not included with the default Perl distribution so you may need to
-install it yourself; visit <A HREF="http://search.cpan.org/">CPAN</A>
-for help.</P>
+better.  It also requires the Perl modules <CODE>LWP::UserAgent</CODE>
+and <CODE>LWP::Debug</CODE> when generating configuration files for the
+SANS Top 20 List.  Note that they are not included with the default Perl
+distribution so you may need to install them yourself; visit <A
+HREF="http://search.cpan.org/">CPAN</A> for help, and note that they
+are included as part of the <A
+HREF="http://search.cpan.org/dist/libwww-perl/">LWP library</A>.</P>
 
 <P>Note: there is also a Python script named <A
 HREF="http://www.edgeos.com/software/">update-nessusrc</A>, written by
 Jay Jacobson.  Currently, it offers functionality similar to this
-script.</P>
+script except it does not support generating config files based on the
+SANS Top 20 List.</P>
 
 
 <H3>Installation</H3>
@@ -149,6 +153,10 @@ variables defined in the script itself:</P>
       <CODE>-c denial -f "SMTP problems"</CODE> will run only denial of
       service attacks specifically associated with SMTP servers.</LI>
 
+   <LI>The <CODE>'--top20'</CODE> option on one hand and the 
+      <CODE>'--categories'</CODE> and <CODE>'--families'</CODE> options
+      on the other are mutually exclusive.</LI>
+
    <LI>Plugins explicitly excluded will never be used regardless of the other
       variables or commandline options.</LI>
 
@@ -180,7 +188,8 @@ variables defined in the script itself:</P>
       SMTP servers.</DD>
 
    <DT><CODE>update-nessusrc -t ~/.nessusrc-top20</CODE></DT>
-   <DD>updates a special nessusrc to scan for SANS' Top 20 Vulnerabilities.</DD>
+   <DD>updates a special nessusrc to scan for the SANS Top 20 
+      Vulnerabilities.</DD>
 </DL>
 </BLOCKQUOTE>
 
@@ -191,10 +200,10 @@ variables defined in the script itself:</P>
 
 <P>This script is not a substitute for the Nessus client in terms of
 managing a configuration file or server certificates.  On one hand, it
-does not handle cases in which the server cert needs to be verified by
-the user.  On the other, several plugins require additional
-configuration - simply adding them to the list of plugins used may not
-be optimal.</P>
+requires that a configuration file already exists and does not handle
+cases in which the server cert needs to be verified by the user.  On the
+other, several plugins require additional configuration - simply adding
+them to the list of plugins used may not be optimal.</P>
 
 <P>If you absolutely can not run the client as a GUI, keep in mind that
 if you are using SSL to encrypt client-server communications, you will
@@ -205,7 +214,7 @@ mode and break out of it when it displays the server's certificate;
 then, run the client manually using the same commandline as reported by
 <B>update-nessusrc</B>.</P>
 
-<P>To ensure an accurate scan for the SANS' Top 20 vulnerabilities, you
+<P>To ensure an accurate scan for the SANS' Top 20 Vulnerabilities, you
 must make sure <CODE>auto_enable_dependencies</CODE> is set to
 <CODE>yes</CODE> in the configuration file; <B>update-nessusrc</B> will
 <B><I>not</I></B> do this for you.</P>
@@ -232,6 +241,22 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Version </TH>
       <TH ALIGN="left">Verification </TH>
       <TH ALIGN="left">Notes<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="left" VALIGN="top">30-May-2003 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.01">2.01</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.01.md5">MD5</A> / 
+         <A HREF="update-nessusrc-2.01.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Changed the documentation to reflect that the 
+            <CODE>'--top20'</CODE> option on one hand and the 
+            <CODE>'--categories'</CODE> and <CODE>'--families'</CODE>
+            options on the other are mutually exclusive.</LI>
+         <LI>Added code to check for existence of the configuration file
+            and croak rather than simply providing help if not.</LI>
+         <LI>Added code to debug LWP's retrieval of the SANS Top 20 List.</LI>
+      </UL></TD>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">21-May-2003 </TH>

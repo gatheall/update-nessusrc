@@ -27,7 +27,7 @@ update-nessusrc - Updates Nessus configuration file with new plugins.
   update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp
 
   # updates a special nessusrc to scan for SANS' Top 20 Vulnerabilities.
-  update-nessusrc -c "" -f "" -t ~/.nessusrc-top20
+  update-nessusrc -t ~/.nessusrc-top20
 
 
 =head1 DESCRIPTION
@@ -71,11 +71,12 @@ Other settings include:
 update-nessusrc is written in Perl and calls the Nessus client to obtain
 a list of current plugins (using the option "-qp").  It should work on
 any unix-like system with Perl 5 and Nessus 1.1.14 or better.  It also
-requires the Perl module C<LWP::UserAgent> when generating configuration
-files for the SANS Top 20 list.  Note that it is not included with the
-default Perl distribution so you may need to install it yourself; visit
-CPAN (L<http://search.cpan.org/>) for help. 
-
+requires the Perl modules C<LWP::UserAgent> and C<LWP::Debug> when
+generating configuration files for the SANS Top 20 List.  Note that they
+are not included with the default Perl distribution so you may need to
+install them yourself; visit CPAN (L<http://search.cpan.org/>) for help
+and note that they are included as part of the C<LWP> library
+(L<http://search.cpan.org/dist/libwww-perl/>). 
 
 =head1 KNOWN BUGS AND CAVEATS
 
@@ -83,10 +84,10 @@ Currently, I am not aware of any bugs in this script.
 
 This script is not a substitute for the Nessus client in terms of
 managing a configuration file or server certificates.  On one hand, it
-does not handle cases in which the server cert needs to be verified by
-the user.  On the other, several plugins require additional
-configuration - simply adding them to the list of plugins used may not
-be optimal. 
+requires that a configuration file already exists and does not handle
+cases in which the server cert needs to be verified by the user.  On the
+other, several plugins require additional configuration - simply adding
+them to the list of plugins used may not be optimal. 
 
 If you absolutely can not run the client as a GUI, keep in mind that if
 you are using SSL to encrypt client-server communications, you will need
@@ -96,7 +97,7 @@ One way to do this is to run update-nessusrc in debug mode and break out
 of it when it displays the server's certificate; then, run the client
 manually using the same commandline as reported by update-nessusrc. 
 
-To ensure an accurate scan for the SANS' Top 20 vulnerabilities, you
+To ensure an accurate scan for the SANS' Top 20 Vulnerabilities, you
 must make sure C<auto_enable_dependencies> is set to C<yes> in the
 configuration file; update-nessusrc will B<not> do this for you. 
 
@@ -131,6 +132,14 @@ it under the same terms as Perl itself.
 
 
 =head1 HISTORY
+
+30-May-2003, v2.01, George A. Theall
+    o Changed the documentation to reflect that the '--top20' option 
+      on one hand and the '--categories' and '--families' options 
+      on the other are mutually exclusive.
+    o Added code to check for existence of the configuration file
+      and croak rather than simply providing help if not.
+    o Added code to debug LWP's retrieval of the SANS Top 20 List.
 
 21-May-2003, v2.00, George A. Theall
     o Changed major portions of code.
@@ -259,9 +268,12 @@ GetOptions(
     "top20|t!",
 );
 my $rcfile = shift || '';
+unless (-s $rcfile) {
+    croak "'$rcfile' does not exist or is empty!\n";
+}
 $options{help} = 1 
     if ($options{top20} and ($options{categories} or $options{families}));
-if (! -f $rcfile or $options{help}) {
+if ($options{help}) {
     print "Usage: $0 [-c|--categories \"cats\"] [-d|--debug] [-f|--families \"fams\"] [-i|--includes \"ids\"] [-s|--summary] [-x|--excludes \"ids\"] rcfile\n",
           "  or\n",
           "       $0 [-d|--debug] [-i|--includes \"ids\"] [-s|--summary] [-t|--top20] [-x|--excludes \"ids\"] rcfile\n";
@@ -349,7 +361,11 @@ if ($options{top20}) {
     use LWP::UserAgent;
 
     # Retrieve Top 20 list.
-    print STDERR "debug: retrieving '$top20_url'.\n" if $DEBUG;
+    if ($DEBUG) {
+        print STDERR "debug: retrieving '$top20_url'.\n";
+        require LWP::Debug; import LWP::Debug qw(+);
+    }
+
     my $ua = LWP::UserAgent->new(
         agent => $useragent,
         timeout => $timeout,
