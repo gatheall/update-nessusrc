@@ -117,11 +117,10 @@ they're included as part of the C<LWP library>
 Currently, I am not aware of any bugs in this script. 
 
 This script is not a substitute for the Nessus client in terms of
-managing a configuration file or server certificates.  On one hand, it
-requires that a configuration file already exists and does not handle
-cases in which the server cert needs to be verified by the user.  On the
-other, several plugins require additional configuration - simply adding
-them to the list of plugins used may not be optimal. 
+managing a configuration file.  On one hand, it requires that a
+configuration file already exists.  On the other, several plugins
+require additional configuration - simply adding them to the list of
+plugins used may not be optimal. 
 
 There is a limit to the size of the arguments passed to
 C<script_cve_id()>, which sets the CVE IDs of the flaws tested by each
@@ -170,6 +169,10 @@ it under the same terms as Perl itself.
 
 
 =head1 HISTORY
+
+20-Aug-2004, v2.31, George A. Theall
+    o Removed mention of not handling server certificates from the 
+      POD.
 
 21-Jul-2004, v2.30, George A. Theall
     o Changed code to direct usage message and certificate validation
