@@ -25,7 +25,7 @@ update-nessusrc - Updates Nessus configuration file with new plugins.
 
   # updates a special nessusrc w/ destructive plugins and tcp_connect
   #   scanner.
-  update-nessusrc -c "denial,destructive_attack,kill_host" -i 10335 ~/.nessusrc-destructive
+  update-nessusrc -c "denial,destructive_attack,flood,kill_host" -i 10335 ~/.nessusrc-destructive
 
   # updates a special nessusrc w/ plugins associated with SMTP servers in
   #   all categories.
@@ -52,8 +52,16 @@ C<SCANNER_SET> and C<PLUGIN_SET> whenever it is run.  Use it
 periodically (eg, via cron) to keep abreast of additions (and deletions)
 in the set of plugins available through that server. 
 
+Much of the script's behaviour is controlled by variables set either in
+the script itself or in a separate script configuration file, specified
+by C<$script_config>.  If it exists, the script configuration file is
+treated as Perl code and evaluated in a I<sandbox>, which supports only
+variable definitions.  Use of a separate script configuration file makes
+it possible for several people to share B<update-nessusrc> on the same
+system and promises to make upgrading the script much easier. 
+
 The decision about which plugins to enable can be controlled either by
-one or more configurable variables or by commandline arguments:
+one or more configurable variables or by commandline arguments. 
 
     Variable            Commandline         Purpose
     @plugin_cats        -c|--categories     Enables plugin categories.
@@ -65,15 +73,15 @@ one or more configurable variables or by commandline arguments:
 
 Plugins explicitly excluded will never be used regardless of the other
 variables or commandline options.  Also, commandline arguments take
-precedence over variables defined in the script; thus, for example, you
-can disable all plugin categories by using the commandline argument C<-c
-"">. 
+precedence over variables defined in the script or a separate
+configuration file; thus, for example, you can disable all plugin
+categories by using the commandline argument C<-c "">. 
 
 For a list of plugin ids, see L<http://cgi.nessus.org/plugins/>; for
 plugin families, see
 L<http://cgi.nessus.org/plugins/dump.php3?viewby=family>; and for plugin
 categories, see the file L<doc/WARNING.En> in the nessus-core source. 
-Unfortunately, risk factors are not (yet?) standardized.
+Unfortunately, risk factors are not (yet?) standardized. 
 
 Other settings include:
 
@@ -85,33 +93,28 @@ Other settings include:
 
 B<update-nessusrc> is written in Perl and calls the Nessus client to
 obtain a list of current plugins (using the option "-qp").  It should
-work on any unix-like system with Perl 5 and Nessus 1.1.13 or better. 
-It also requires the Perl modules C<LWP::UserAgent> and C<LWP::Debug>
-when generating configuration files for the SANS Top 20 List.  Note that
-they are not included with the default Perl distribution so you may need
-to install them yourself; visit CPAN (L<http://search.cpan.org/>) for
-help and note that they are included as part of the C<LWP> library
+work on any unix-like system with Perl 5.003 or later and Nessus 1.1.13
+or later.  It also requires the following Perl modules:
+
+    o Carp
+    o Getopt::Long
+    o IPC::Open2
+    o LWP::UserAgent
+    o LWP::Debug
+    o Safe
+
+If your system does not have these modules installed already, visit CPAN
+(L<http://search.cpan.org/>).  Note that C<Safe> must be at least
+version 2.0, which does not work with versions of Perl older than 5.003. 
+Note also that C<LWP::Debug> and C<LWP::UserAgent> are not included with
+the default Perl distribution so you may need to install them yourself;
+they're included as part of the C<LWP library>
 (L<http://search.cpan.org/dist/libwww-perl/>). 
 
 
 =head1 KNOWN BUGS AND CAVEATS
 
 Currently, I am not aware of any bugs in this script. 
-
-Warning messages similar to the following:
-
-   Malformed UTF-8 character (unexpected continuation byte 0xae, with no
-   preceding start byte) in pattern match (m//) at ./update-nessusrc
-   line 356, E<lt>CMDE<gt> line 277.
-
-arise due to your system's support of Unicode (typically under RedHat
-8).  You can avoid such warnings by adding the following line:
-
-    use open IN =E<gt> ':raw';
-
-after the line that reads:
-
-    use strict;
 
 This script is not a substitute for the Nessus client in terms of
 managing a configuration file or server certificates.  On one hand, it
@@ -120,36 +123,30 @@ cases in which the server cert needs to be verified by the user.  On the
 other, several plugins require additional configuration - simply adding
 them to the list of plugins used may not be optimal. 
 
-If you absolutely can not run the client as a GUI, keep in mind that if
-you are using SSL to encrypt client-server communications, you will need
-to run the nessus client at least once to connect to the server and
-accept the certificate it presents, otherwise, B<update-nessusrc> will
-hang when run.  One way to do this is to run B<update-nessusrc> in debug
-mode, note the nessus commandline it runs, break out of it when it
-displays the server's certificate, and then run the client manually
-using the same commandline noted earlier. 
-
 There is a limit to the size of the arguments passed to
 C<script_cve_id()>, which sets the CVE IDs of the flaws tested by each
 plugin.  Additional CVE IDs, which by convention are listed in comments,
-are not reported by this script since they can not be reliably
-identified.  This may cause not only inaccurate summary reports but also
-spurious warnings about incomplete tests for the SANS Top 20
-Vulnerabilities. 
+are not handled by this script since they can not be reliably
+identified.  Thus, you would do well to review the report of Top 20
+Vulnerabilities for which no plugins were found and update the
+configuration file manually after examining plugins available on your
+server.  Otherwise, you risk generating a configuration file that's not
+quite comprehensive. 
 
-To ensure an accurate scan for the SANS Top 20 Vulnerabilities, you
-must make sure C<auto_enable_dependencies> is set to C<yes> in the
-configuration file; B<update-nessusrc> will B<not> do this for you.
+To ensure an accurate scan for the SANS Top 20 Vulnerabilities, you must
+make sure C<auto_enable_dependencies> is set to C<yes> in the
+configuration file; B<update-nessusrc> will B<not> do this for you. 
 
-Finally, realize that this script will hold a userid and password used
-to connect to a Nessus server; protect it accordingly!
+Finally, realize that this script along with its script configuration
+files may hold userids and passwords used to connect to a Nessus server;
+protect them accordingly!
 
 
 =head1 DIAGNOSTICS
 
-Fatal errors will be reported using croak; these include the 
-inability to run the Nessus client and failures to read / write the
-configuration files.
+Fatal errors will be reported using croak; these include the inability
+to run the Nessus client and failures to read / write the configuration
+files. 
 
 
 =head1 SEE ALSO
@@ -165,7 +162,7 @@ George A. Theall, E<lt>theall@tifaware.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2003, George A. Theall.
+Copyright (c) 2003 - 2004, George A. Theall.
 All rights reserved.
 
 This script is free software; you can redistribute it and/or modify
@@ -173,6 +170,16 @@ it under the same terms as Perl itself.
 
 
 =head1 HISTORY
+
+26-Jan-2004, v2.20, George A. Theall
+    o Added support for '-h' option.
+    o Added support for script configuration files. [Suggested by David 
+      Klann.]
+    o Added code to explicitly use binary semantics when reading plugin
+      output from nessus.
+    o Added support for validating server certificates if necessary.
+    o Modified the default set of categories to explicitly exclude those
+      in the flood category, which will be introduced in Nessus 2.1.0.
 
 27-Oct-2003, v2.12, George A. Theall
     o Fixed a bug in the parsing of output from "nessus -qp" that would
@@ -253,57 +260,161 @@ it under the same terms as Perl itself.
 
 ############################################################################
 # Make sure we have access to the required modules.
-require 5;
-
+use 5.003;
 use strict;
 use Carp;
 use Getopt::Long;
+use IPC::Open2;
+use Safe 2.0;
 
 
 ############################################################################
 # Initialize variables.
+#
+# nb: global variables (declared with "our") in this section may also be 
+#     defined in a script configuration file.
 $| = 1;
 delete @ENV{qw(IFS CDPATH ENV BASH_ENV)};   # Make %ENV safer
-$ENV{PATH} = '/usr/local/bin';              # nb: should be where nessus is
-my $DEBUG = 0;
-
-my $nessusd_host = '' || croak "*** You must set \$nessusd_host! ***\n";
-my $nessusd_port = 1241;                    # nb: you may need to change this!
-my $nessusd_user = '' || croak "*** You must set \$nessusd_user! ***\n";
-my $nessusd_user_pass = '' || croak "*** You must set \$nessusd_user_pass! ***\n";
-
-my @plugin_cats = (                         # categories of plugins to enable
+$ENV{PATH} = '/usr/bin:/usr/local/bin';     # nb: should be where nessus is.
+our $DEBUG = 0;
+our $nessusd_host;
+our $nessusd_port = 1241;                   # nb: you may need to change this!
+our $nessusd_user;
+our $nessusd_user_pass;
+our @plugin_cats = (                        # categories of plugins to enable
     '_all_',                                # - all categories
     '!denial',                              # -   except DoS
     '!destructive_attack',                  # -   except kill services / software
+    '!flood',                               # -   except flood target w/ packets.
     '!kill_host',                           # -   except kill the OS.
     '!scanner',                             # -   except port scanners (we'll include individually)
 );
-my @plugin_fams = (                         # families of plugins to enable
+our @plugin_fams = (                        # families of plugins to enable
     '_all_',                                # - all families
 );
-my @plugin_excludes = (
+our @plugin_excludes = (
     # empty
 );
-my @plugin_includes = (
+our @plugin_includes = (
     '10180',                                # Ping the remote host
     '10335',                                # tcp_connect scan
 );
-my @plugin_risks = (                        # risk factors for plugins to enable
+our @plugin_risks = (                       # risk factors for plugins to enable
                                             # nb: this should be a regex
     '.',                                    # - all risk factors
 );
 # nb: sample http proxy settings
 #     - no proxy.
-my $proxy = '';
+our $proxy = '';
 #     - unauthenticated proxy via proxy1.domain.com.
-# my $proxy = 'http://proxy1.domain.com';
+# our $proxy = 'http://proxy1.domain.com';
 #     - authenticated as user 'user' w/ password 'pass' via proxy2.domain.com.
-# my $proxy = 'http://user:pass@proxy2.domain.com';
-my $summary = 0;                            # Print summary report?
-my $timeout = 120;                          # timeout used w/ http GET
-my $top20_url = 'http://www.sans.org/top20/';   # location of SANS Top20
-my $useragent = 'update-nessusrc/2.12';     # used when requesting SANS Top20
+# our $proxy = 'http://user:pass@proxy2.domain.com';
+my $script_config = $ENV{HOME} .            # config file for update-nessusrc itself.
+    '/.update-nessusrc';
+our $summary = 0;                           # Print summary report?
+our $timeout = 120;                         # timeout used w/ http GET
+our $top20_url = 'http://www.sans.org/top20/';  # location of SANS Top20
+our $useragent = 'update-nessusrc/2.20';    # used when requesting SANS Top20
+
+
+############################################################################
+# Process script configuration file, if it exists.
+#
+# nb: untaint $script_config in case it contains $ENV{HOME} or 
+#     something like that. Here, we require it consiste of
+#     alphanumerics, '-', '.', or '/' only.
+if ($script_config =~ /^([\w\-\.\/]+)$/) {
+    $script_config = $1;
+}
+else {
+    croak "Can't untaint '$script_config'!\n";
+}
+# nb: processing is done in a sandbox with the Safe module that restricts
+#     what code in the script config file can do to basically just
+#     defining variables. Further, values are brought back into the
+#     main namespace only for the configurable variables above.
+if (-r $script_config) {
+    warn "debug: processing '$script_config'.\n" if $DEBUG;
+    my $sandbox = new Safe;
+    $sandbox->permit_only(':base_core', ':base_mem');
+    $sandbox->rdo($script_config);
+    croak "Can't parse '$script_config' - $@!\n" if ($@);
+
+    no strict 'vars', 'refs';
+    # Bring back values for these scalars.
+    foreach my $var (
+        'DEBUG',
+        'nessusd_host', 
+        'nessusd_port',
+        'nessusd_user',
+        'nessusd_user_pass',
+        'proxy',
+        'summary',
+        'timeout',
+        'top20_url',
+        'useragent',
+    ) {
+        local *symname = $sandbox->varglob($var);
+
+        # Skip unless $var is defined in the script config.
+        next unless (defined $symname);
+
+        # Skip if values are the same in the script and the script config file.
+        next if (defined ${$var} and ${$var} eq $symname);
+
+        if ($DEBUG) {
+            warn "debug:   updating '\$$var'.\n";
+            warn "debug:     old value: '", ${$var} || '', "'\n";
+        }
+        ${$var} = $symname;
+        if ($DEBUG) {
+            warn "debug:     new value: '", ${$var} || '', "'\n";
+        }
+    }
+    # Bring back values for these arrays.
+    foreach my $var (
+        'plugin_cats',
+        'plugin_fams',
+        'plugin_excludes',
+        'plugin_includes',
+        'plugin_risks',
+    ) {
+        local *symname = $sandbox->varglob($var);
+
+        # Skip unless $var is an array in the script config.
+        next unless (*symname{ARRAY});
+
+        # Skip if arrays elements are the same in the script and 
+        # the script config file.
+        if (scalar(@symname) == scalar(@{$var})) {
+            my %elements;
+            grep($elements{$_}++, @{$var});
+            next unless (grep(!$elements{$_}, @symname));
+        }
+
+        if ($DEBUG) {
+            warn "debug:   updating '\@$var'.\n";
+            warn "debug:     old values:\n";
+            foreach (@{$var}) {
+                warn "debug:       '$_'\n";
+            }
+        }
+        @{$var} = ();
+        grep(push(@{$var}, $_), @symname);
+        if ($DEBUG) {
+            warn "debug:     new values:\n";
+            foreach (@{$var}) {
+                warn "debug:       '$_'\n";
+            }
+        }
+    }
+    use strict 'refs', 'vars';
+}
+croak "*** You must set \$nessusd_host! ***\n" unless ($nessusd_host);
+croak "*** You must set \$nessusd_port! ***\n" unless ($nessusd_port);
+croak "*** You must set \$nessusd_user! ***\n" unless ($nessusd_user);
+croak "*** You must set \$nessusd_user_pass! ***\n" unless ($nessusd_user_pass);
 
 
 ############################################################################
@@ -318,7 +429,7 @@ GetOptions(
     "categories|c=s@",
     "families|f=s@",
     "debug|d!",
-    "help|?!",
+    "help|h|?!",
     "excludes|x=s@",
     "includes|i=s@",
     "risks|r=s@",
@@ -334,7 +445,9 @@ $options{help} = 1
 if ($options{help}) {
     print "Usage: $0 [-c|--categories \"cats\"] [-d|--debug] [-f|--families \"fams\"] [-i|--includes \"ids\"] [-r|--risks \"risks\"] [-s|--summary] [-x|--excludes \"ids\"] rcfile\n",
           "  or\n",
-          "       $0 [-d|--debug] [-i|--includes \"ids\"] [-s|--summary] [-t|--top20] [-x|--excludes \"ids\"] rcfile\n";
+          "       $0 [-d|--debug] [-i|--includes \"ids\"] [-s|--summary] [-t|--top20] [-x|--excludes \"ids\"] rcfile\n",
+          "  or\n",
+          "       $0 [-h|-?|--help]\n";
     exit(9);
 }
 unless (-s $rcfile) {
@@ -384,17 +497,51 @@ my $nfields = ($nessus_version =~ /^(1\.|2\.0\.[0-7])/) ? 9 : 11;
 warn "debug:   $nfields available fields in plugins list output.\n" if $DEBUG;
 
 warn "debug: getting list of available plugins.\n" if $DEBUG;
-$cmd = "nessus -c $rcfile -qp $nessusd_host $nessusd_port $nessusd_user $nessusd_user_pass";
-warn "debug:   running '$cmd'\n" if $DEBUG;
-my(%categories, @errors, %families, %ids, %plugin);
+$cmd = 'nessus';
+my $cmd_args = "-c $rcfile -qp $nessusd_host $nessusd_port $nessusd_user $nessusd_user_pass";
+warn "debug:   running '$cmd $cmd_args'\n" if $DEBUG;
+my(%categories, $CMD_READ, $CMD_WRITE, @errors, %families, %ids, %plugin);
+my $got_cert = 0;
 our(@plugins_new, @scanners_new);       # nb: must be valid globals!
-open(CMD, "$cmd 2>&1 |") or croak "Can't run '$cmd' - $!\n";
-while (<CMD>) {
+my $pid = open2(
+    \*CMD_READ, 
+    \*CMD_WRITE, 
+    $cmd, 
+    split(/\s+/, $cmd_args)
+) or croak "Can't run '$cmd $cmd_args' - $!\n";
+binmode(CMD_READ);                      # avoid "Malformed UTF-8 character" warnings.
+while (<CMD_READ>) {
     chomp;
     warn "debug:   reading >>$_<<\n" if $DEBUG;
 
-    # If line doesn't start with id, save it for later but otherwise skip it.
+    # If line doesn't start with id, check whether it's a cert and
+    # save it for later.
     unless (/^\d+\|/) {
+        # nb: to recognize that we've read the full cert, we check for
+        #     three things. The first doesn't matter very much but
+        #     must occur between the two instances of the second.
+        $got_cert = 1 if ($got_cert == 0 && /^\s+Subject Public Key Info:/);
+        $got_cert = 2 if ($got_cert == 1 && /^\s+Signature Algorithm:\s+/);
+        if ($got_cert == 2 && /^$/) {
+            # At this point, we've gotten the cert so display it and
+            # ask whether to accept it.
+            print join("\n", @errors), "\n",
+                  "\n",
+                  "Do you accept it ? (y/n) ";
+            my $ans;
+            do {
+                chomp($ans = <STDIN>);
+            } until ($ans =~ /^[yn]$/);
+            # Send answer along to nessus.
+            print CMD_WRITE "$ans\n";
+            # If cert was not accepted, exit. NB: nessus itself will
+            # display an informative error.
+            exit if ($ans eq 'n');
+            # Otherwise, reset some variables and iterate.
+            $got_cert = 0;
+            @errors = ();
+            next;
+        }
         push(@errors, $_);
         next;
     }
@@ -448,7 +595,9 @@ while (<CMD>) {
         push(@plugins_new, $id);
     }
 }
-close(CMD);
+close(CMD_READ);
+close(CMD_WRITE);
+waitpid($pid, 0);
 $rc = $? >> 8;
 if ($rc) {
     my $errmsg = pop(@errors) || 'Unknown error running nessus';

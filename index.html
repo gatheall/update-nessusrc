@@ -50,14 +50,27 @@ ensures your client configuration files are as current as possible.</P>
 
 <P><B>update-nessusrc</B> is written in Perl and calls the Nessus client
 to obtain a list of current plugins (using the option <CODE>-qp</CODE>). 
-It should work on any unix-like system with Perl 5 and Nessus 1.1.13 or
-better.  It also requires the Perl modules <CODE>LWP::UserAgent</CODE>
-and <CODE>LWP::Debug</CODE> when generating configuration files for the
-SANS Top 20 List.  Note that they are not included with the default Perl
-distribution so you may need to install them yourself; visit <A
-HREF="http://search.cpan.org/">CPAN</A> for help, and note that they
-are included as part of the <A
-HREF="http://search.cpan.org/dist/libwww-perl/">LWP library</A>.</P>
+It should work on any unix-like system with Perl 5.003 or better and
+Nessus 1.1.13 or better.  It also requires the following Perl
+modules:</P>
+
+<UL>
+   <LI><CODE>Carp</CODE></LI>
+   <LI><CODE>Getopt::Long</CODE></LI>
+   <LI><CODE>IPC::Open2</CODE></LI>
+   <LI><CODE>LWP::Debug</CODE></LI>
+   <LI><CODE>LWP::UserAgent</CODE></LI>
+   <LI><CODE>Safe</CODE></LI>
+</UL>
+
+<P>If your system does not have these modules installed already, visit
+<A HREF="http://search.cpan.org/">CPAN</A>.  Note that <CODE>Safe</CODE>
+must be at least version 2.0, which does not work with versions of Perl
+older than 5.003.  Note also that <CODE>LWP::Debug</CODE> and
+<CODE>LWP::UserAgent</CODE> are not included with the default Perl
+distribution so you may need to install them yourself; they're included
+as part of the <A HREF="http://search.cpan.org/dist/libwww-perl/">LWP
+library</A>.</P>
 
 <P>Note: there is also a Python script named <A
 HREF="http://www.edgeos.com/software/">update-nessusrc</A>, written by
@@ -79,26 +92,38 @@ SANS Top 20 List.</P>
       and will hold a userid and password used to connect with a Nessus 
       server.</LI>
    <LI>Edit the script and set <CODE>$nessusd_host</CODE>, 
-      <CODE>$nessusd_port</CODE>, <CODE>$nessusd_user</CODE>, and
+      <CODE>$nessusd_port</CODE>, <CODE>$nessusd_user</CODE>,
       <CODE>$nessusd_user_pass</CODE>, and <CODE>$proxy</CODE> according 
       to your environment. Also, you may wish to adjust the location of 
       the perl interpreter in the first line, <CODE>$ENV{PATH}</CODE>,
       <CODE>@plugin_cats</CODE>, <CODE>@plugin_fams</CODE>, 
       <CODE>@plugin_excludes</CODE>, <CODE>@plugin_includes</CODE>, 
-      and/or <CODE>@plugin_risks</CODE> to suit your tastes.</LI>
+      <CODE>@plugin_risks</CODE>, and/or <CODE>$script_config</CODE>
+      to suit your tastes.</LI>
+   <LI>Have each user create a script configuration file with personalized
+      settings, if desired.</LI>
 </OL>
 
 
 <H3>Use</H3>
 
-<P>The script offers considerable control in the selection of plugins -
-either by editing variables in the script or by commandline arguments,
-you can include entire categories and families of plugins, include
-specific plugins, exclude specific plugins, or even include based on
-the risk factor of the vulnerabilities scanned for by plugins.</P>
+<P><B>update-nessusrc</B> offers considerable control in the selection
+of plugins - you can include entire categories and families of plugins,
+include specific plugins, exclude specific plugins, or even include
+based on the risk factor of the vulnerabilities scanned for by
+plugins.</P>
 
-<P>There are several commandline arguments you can use to override 
-variables defined in the script itself:</P>
+<P>Much of the script's behaviour is controlled by variables set either
+in the script itself or in a separate script configuration file,
+specified by <CODE>$script_config</CODE>.  If it exists, the script
+configuration file is treated as Perl code and evaluated in a
+<I>sandbox</I>, which supports only variable definitions.  Use of a
+separate script configuration file makes it possible for several people
+to share <B>update-nessusrc</B> on the same system and promises to make
+upgrading the script much easier.</P>
+
+<P>There are several commandline arguments you can use to override
+variables defined in the script or the script configuration file:</P>
 
 <BLOCKQUOTE>
 <DL>
@@ -168,9 +193,10 @@ variables defined in the script itself:</P>
       periodically review the specific categories and families you use with
       this script.
 
-   <LI>Commandline arguments take precedence over variables defined in the
-      script. For example, you can disable all plugin categories by using
-      the commandline argument <CODE>-c ""</CODE>.</LI>
+   <LI>Commandline arguments take precedence over variables defined in a
+      script configuration file, which in turn take precedence over variables
+      defined in the script itself. For example, you can disable all plugin 
+      categories by using the commandline argument <CODE>-c ""</CODE>.</LI>
 
    <LI><B>Plugin categories, families, and risk factors are considered 
       together when deciding whether to include plugins.</B>  For example, 
@@ -199,39 +225,39 @@ variables defined in the script itself:</P>
 <P>Examples:</P>
 <BLOCKQUOTE>
 <DL>
-   <DT><CODE>update-nessusrc ~/.nessusrc</CODE></DT>
-   <DD>updates nessusrc using default settings (eg, non-dangerous plugins
-      and ping / tcp_connect scanners in the script as distributed).</DD>
+   <DT>Update nessusrc using default settings (eg, non-dangerous plugins
+      and ping / tcp_connect scanners in the script as distributed).</DT>
+   <DD><CODE>update-nessusrc ~/.nessusrc</CODE></DD>
 
-   <DT><CODE>update-nessusrc -s ~/.nessusrc</CODE></DT>
-   <DD>same as above but also print a summary of the changes.</DD>
+   <DT>Same as above but also print a summary of the changes.</DT>
+   <DD><CODE>update-nessusrc -s ~/.nessusrc</CODE></DD>
 
-   <DT><CODE>update-nessusrc -d ~/.nessusrc</CODE></DT>
-   <DD>produces an alternate nessusrc without replacing original and
-      also prints lots of debugging info.</DD>
+   <DT>Produce an alternate nessusrc without replacing original and
+      also prints lots of debugging info.</DT>
+   <DD><CODE>update-nessusrc -d ~/.nessusrc</CODE></DD>
 
-   <DT><CODE>update-nessusrc -c "" -f "" -r "" -i "10335,11835" .nessusrc-ms03-039</CODE></DT>
-   <DD>updates a special nessusrc to use tcp_connect scanner (plugin #10335) 
-      and test just for MS RPC interface buffer overruns (plugin #11835).</DD>
+   <DT>Update a special nessusrc to use tcp_connect scanner (plugin #10335) 
+      and test just for MS RPC interface buffer overruns (plugin #11835).</DT>
+   <DD><CODE>update-nessusrc -c "" -f "" -r "" -i "10335,11835" .nessusrc-ms03-039</CODE></DD>
 
-   <DT><CODE>update-nessusrc -c "denial,destructive_attack" -i 10335 ~/.nessusrc-destructive</CODE></DT>
-   <DD>updates a special nessusrc w/ destructive plugins and tcp connect scanner.</DD>
+   <DT>Update a special nessusrc w/ destructive plugins and tcp connect scanner.</DT>
+   <DD><CODE>update-nessusrc -c "denial,destructive_attack,flood,kill_host" -i 10335 ~/.nessusrc-destructive</CODE></DD>
 
-   <DT><CODE>update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp</CODE></DT>
-   <DD>updates a special nessusrc w/ plugins associated with SMTP servers in
-      all categories.</DD>
+   <DT>Update a special nessusrc w/ plugins associated with SMTP servers in
+      all categories.</DT>
+   <DD><CODE>update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp</CODE></DD>
 
-   <DT><CODE>update-nessusrc -c "_all_" -c !destructive_attack -f "SMTP problems" ~/.nessusrc-smtp</CODE></DT>
-   <DD>updates a special nessusrc w/ plugins associated with SMTP servers in
-      all categories except destructive_attack.</DD>
+   <DT>Update a special nessusrc w/ plugins associated with SMTP servers in
+      all categories except destructive_attack.</DT>
+   <DD><CODE>update-nessusrc -c "_all_" -c !destructive_attack -f "SMTP problems" ~/.nessusrc-smtp</CODE></DD>
 
-   <DT><CODE>update-nessusrc -r "(Critical|High)" ~/.nessusrc-risky</CODE></DT>
-   <DD>updates a special nessusrc w/ plugins that scan only for critical-
-      and high-risk vulnerabilities.</DD>
+   <DT>Update a special nessusrc w/ plugins that scan only for critical-
+      and high-risk vulnerabilities.</DT>
+   <DD><CODE>update-nessusrc -r "(Critical|High)" ~/.nessusrc-risky</CODE></DD>
 
-   <DT><CODE>update-nessusrc -t ~/.nessusrc-top20</CODE></DT>
-   <DD>updates a special nessusrc to scan for the SANS Top 20 
-      Vulnerabilities.</DD>
+   <DT>Update a special nessusrc to scan for the SANS Top 20 
+      Vulnerabilities.</DT>
+   <DD><CODE>update-nessusrc -t ~/.nessusrc-top20</CODE></DD>
 </DL>
 </BLOCKQUOTE>
 
@@ -240,27 +266,6 @@ variables defined in the script itself:</P>
 
 <P>Currently, I am not aware of any bugs in this script.</P>
 
-<P>Warning messages similar to the following:
-
-<BLOCKQUOTE>
-<PRE>Malformed UTF-8 character (unexpected continuation byte 0xae, with no
-preceding start byte) in pattern match (m//) at ./update-nessusrc
-line 356, &lt;CMD&gt; line 277.</PRE>
-</BLOCKQUOTE>
-
-arise due to your system's support of Unicode (typically under RedHat
-8). You can avoid such warnings by adding the following line:
-
-<BLOCKQUOTE>
-<PRE>use open IN =&gt; ':raw';</PRE>
-</BLOCKQUOTE>
-
-after the line that reads:
-
-<BLOCKQUOTE>
-<PRE>use strict;</PRE>
-</BLOCKQUOTE>
-
 <P>This script is not a substitute for the Nessus client in terms of
 managing a configuration file or server certificates.  On one hand, it
 requires that a configuration file already exists and does not handle
@@ -268,35 +273,29 @@ cases in which the server cert needs to be verified by the user.  On the
 other, several plugins require additional configuration - simply adding
 them to the list of plugins used may not be optimal.</P>
 
-<P>If you absolutely can not run the client as a GUI, keep in mind that
-if you are using SSL to encrypt client-server communications, you will
-need to run the client at least once to connect to the server and accept
-the certificate it presents, otherwise, <B>update-nessusrc</B> will hang
-when run.  One way to do this is to run <B>update-nessusrc</B> in debug
-mode, note the nessus commandline it runs, break out of it when
-it displays the server's certificate, and then run the client manually
-using the same commandline noted earlier.</P>
-
 <P>There is a limit to the size of the arguments passed to
 <CODE>script_cve_id()</CODE>, which sets the CVE IDs of the flaws tested
 by each plugin.  Additional CVE IDs, which by convention are listed in
-comments, are not reported by this script since they can not be reliably
-identified.  This may cause not only inaccurate summary reports but also
-spurious warnings about incomplete tests for the SANS Top 20
-Vulnerabilities.</P>
+comments, are not handled by this script since they can not be reliably
+identified.  Thus, you would do well to review the report of Top 20
+Vulnerabilities for which no plugins were found and update the
+configuration file manually after examining plugins available on your
+server.  Otherwise, you risk generating a configuration file that's not
+as comprehensive as it could be.</P>
 
 <P>To ensure an accurate scan for the SANS Top 20 Vulnerabilities, you
 must make sure <CODE>auto_enable_dependencies</CODE> is set to
 <CODE>yes</CODE> in the configuration file; <B>update-nessusrc</B> will
 <B><I>not</I></B> do this for you.</P>
 
-<P>Finally, realize that this script will hold a userid and password
-used to connect to a Nessus server; protect it accordingly!</P>
+<P>Finally, realize that this script along with its script configuration
+files may hold userids and passwords used to connect to a Nessus server;
+protect them accordingly!</P>
 
 
 <H3>Copyright and License</H3>
 
-<P>Copyright (c) 2003, George A. Theall.<BR>
+<P>Copyright (c) 2003 - 2004, George A. Theall.<BR>
 All rights reserved.</P>
 
 <P>This script is free software; you can redistribute it and/or modify
@@ -312,6 +311,25 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Version </TH>
       <TH ALIGN="left">Verification </TH>
       <TH ALIGN="left">Notes<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="left" VALIGN="top">26-Jan-2004 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.20">2.20</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.20.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-2.20.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Added support for <CODE>-h</CODE> option.</LI>
+         <LI>Added support for script configuration files. [Suggested by 
+            David Klann.]</LI>
+         <LI>Added code to explicitly use binary semantics when reading
+            plugin output from nessus.</LI>
+         <LI>Added support for validating server certificates if
+            necessary.</LI>
+         <LI>Modified the default set of categories to explicitly exclude 
+            those in the flood category, which is expected to be introduced
+            in Nessus 2.1.0.</LI>
+      </UL></TD>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">27-Oct-2003 </TH>
