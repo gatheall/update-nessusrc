@@ -170,6 +170,9 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+20-Aug-2004, v2.32, George A. Theall
+    o Changed $useragent to reflect current version number. :-(
+
 20-Aug-2004, v2.31, George A. Theall
     o Removed mention of not handling server certificates from the 
       POD.
@@ -331,7 +334,7 @@ my $script_config = $ENV{HOME} .            # config file for update-nessusrc it
 our $summary = 0;                           # Print summary report?
 our $timeout = 120;                         # timeout used w/ http GET
 our $top20_url = 'http://www.sans.org/top20/';  # location of SANS Top20
-our $useragent = 'update-nessusrc/2.30';    # used when requesting SANS Top20
+our $useragent = 'update-nessusrc/2.32';    # used when requesting SANS Top20
 
 
 ############################################################################
