@@ -50,7 +50,7 @@ ensures your client configuration files are as current as possible.</P>
 
 <P><B>update-nessusrc</B> is written in Perl and calls the Nessus client
 to obtain a list of current plugins (using the option <CODE>-qp</CODE>). 
-It should work on any unix-like system with Perl 5 and Nessus 1.1.14 or
+It should work on any unix-like system with Perl 5 and Nessus 1.1.13 or
 better.  It also requires the Perl modules <CODE>LWP::UserAgent</CODE>
 and <CODE>LWP::Debug</CODE> when generating configuration files for the
 SANS Top 20 List.  Note that they are not included with the default Perl
@@ -69,10 +69,10 @@ SANS Top 20 List.</P>
 <H3>Installation</H3>
 
 <OL>
-   <LI>Retrieve the script <A HREF="update-nessusrc">update-nessusrc</A>
+   <LI>Retrieve the script <A HREF="/code/update-nessusrc/update-nessusrc">update-nessusrc</A>
       and save it locally.  You may also wish to verify its
-      <A HREF="update-nessusrc.md5">MD5 checksum</A> or, better, its
-      <A HREF="update-nessusrc.asc">GPG signature</A> against
+      <A HREF="/code/update-nessusrc/update-nessusrc.md5">MD5 checksum</A> or, better, its
+      <A HREF="/code/update-nessusrc/update-nessusrc.asc">GPG signature</A> against
       <A HREF="/~theall/gpg.html">my current GPG key</A>.</LI>
    <LI>Verify ownership and permissions on the script - it can (and
       probably should) be invoked as an ordinary user rather than root 
@@ -105,8 +105,8 @@ variables defined in the script itself:</P>
    <DT>-c, --categories &lt;plugin categories&gt;</DT>
    <DD>Enable plugins in the specified categories, overriding
       <CODE>@plugin_cats</CODE>. <CODE>_all_</CODE> can be used to
-      represent all plugin categories and <CODE>!</CODE> to skip
-      specific ones.</DD>
+      represent all plugin categories and the prefix <CODE>!</CODE>
+      to skip specific ones.</DD>
 
    <DT>-d, --debug</DT>
    <DD>Display debugging messages while running.  Creates a scratch
@@ -138,7 +138,7 @@ variables defined in the script itself:</P>
 
    <DT>-t, --top20</DT>
    <DD>Include plugins to scan for the 
-      <A HREF="http://www.sans.org/top20/">SANS' Top 20 
+      <A HREF="http://www.sans.org/top20/">SANS Top 20 
       Vulnerabilities</A>.</DD>
 
    <DT>-x, --excludes &lt;plugin ids&gt;</DT>
@@ -156,7 +156,7 @@ variables defined in the script itself:</P>
       for plugin families, see 
       <A HREF="http://cgi.nessus.org/plugins/dump.php3?viewby=family">http://cgi.nessus.org/plugins/dump.php3?viewby=family</A>; 
       and for plugin categories, see the file <CODE>doc/WARNING.En</CODE> in 
-      the nessus-core source. Unfortunately, risk factors are not (yet?)
+      the nessus-core source. Unfortunately, risk factors are not
       standardized; while <CODE>Low</CODE>, <CODE>Medium</CODE>, and
       <CODE>High</CODE> are common ones, they are by far from the only
       ones used. Further, some risk factors depend on the outcome of
@@ -168,11 +168,6 @@ variables defined in the script itself:</P>
       periodically review the specific categories and families you use with
       this script.
 
-   <LI>Nessus will run plugins in the category <CODE>settings</CODE> as
-      needed regardless of what's in the configuration file.  These plugins
-      only update the knowledge bases; they do not actually send any 
-      packets.</LI>
-
    <LI>Commandline arguments take precedence over variables defined in the
       script. For example, you can disable all plugin categories by using
       the commandline argument <CODE>-c ""</CODE>.</LI>
@@ -182,6 +177,11 @@ variables defined in the script itself:</P>
       choosing <CODE>-c denial -f "SMTP problems" -r "High"</CODE> will 
       run only denial of service attacks for high-risk vulnerabilities 
       specifically associated with SMTP servers.</LI>
+
+   <LI>Nessus will run plugins in the category <CODE>settings</CODE> as
+      needed regardless of what's in the configuration file.  These plugins
+      only update the knowledge bases; they do not actually send any 
+      packets.</LI>
 
    <LI>The <CODE>'--top20'</CODE> option on one hand and the 
       <CODE>'--categories'</CODE>, <CODE>'--families'</CODE>, and
@@ -200,8 +200,8 @@ variables defined in the script itself:</P>
 <BLOCKQUOTE>
 <DL>
    <DT><CODE>update-nessusrc ~/.nessusrc</CODE></DT>
-   <DD>updates default nessusrc w/ non-destructive plugins and ping /
-      tcp connect() scanners.</DD>
+   <DD>updates nessusrc using default settings (eg, non-dangerous plugins
+      and ping / tcp_connect scanners in the script as distributed).</DD>
 
    <DT><CODE>update-nessusrc -s ~/.nessusrc</CODE></DT>
    <DD>same as above but also print a summary of the changes.</DD>
@@ -210,8 +210,12 @@ variables defined in the script itself:</P>
    <DD>produces an alternate nessusrc without replacing original and
       also prints lots of debugging info.</DD>
 
-   <DT><CODE>update-nessusrc -c "denial,destructive_attack" -i 10335 ~/.nessusrc-dos</CODE></DT>
-   <DD>updates a special nessusrc w/ DoS plugins and tcp connect() scanner.</DD>
+   <DT><CODE>update-nessusrc -c "" -f "" -r "" -i "10335,11835" .nessusrc-ms03-039</CODE></DT>
+   <DD>updates a special nessusrc to use tcp_connect scanner (plugin #10335) 
+      and test just for MS RPC interface buffer overruns (plugin #11835).</DD>
+
+   <DT><CODE>update-nessusrc -c "denial,destructive_attack" -i 10335 ~/.nessusrc-destructive</CODE></DT>
+   <DD>updates a special nessusrc w/ destructive plugins and tcp connect scanner.</DD>
 
    <DT><CODE>update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp</CODE></DT>
    <DD>updates a special nessusrc w/ plugins associated with SMTP servers in
@@ -221,7 +225,7 @@ variables defined in the script itself:</P>
    <DD>updates a special nessusrc w/ plugins associated with SMTP servers in
       all categories except destructive_attack.</DD>
 
-   <DT><CODE>update-nessusrc -r "(Critical|High)" ~/.nessusrc-dos</CODE></DT>
+   <DT><CODE>update-nessusrc -r "(Critical|High)" ~/.nessusrc-risky</CODE></DT>
    <DD>updates a special nessusrc w/ plugins that scan only for critical-
       and high-risk vulnerabilities.</DD>
 
@@ -273,7 +277,15 @@ mode, note the nessus commandline it runs, break out of it when
 it displays the server's certificate, and then run the client manually
 using the same commandline noted earlier.</P>
 
-<P>To ensure an accurate scan for the SANS' Top 20 Vulnerabilities, you
+<P>There is a limit to the size of the arguments passed to
+<CODE>script_cve_id()</CODE>, which sets the CVE IDs of the flaws tested
+by each plugin.  Additional CVE IDs, which by convention are listed in
+comments, are not reported by this script since they can not be reliably
+identified.  This may cause not only inaccurate summary reports but also
+spurious warnings about incomplete tests for the SANS Top 20
+Vulnerabilities.</P>
+
+<P>To ensure an accurate scan for the SANS Top 20 Vulnerabilities, you
 must make sure <CODE>auto_enable_dependencies</CODE> is set to
 <CODE>yes</CODE> in the configuration file; <B>update-nessusrc</B> will
 <B><I>not</I></B> do this for you.</P>
@@ -302,10 +314,29 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Notes<BR></TH>
    </TR>
    <TR>
+      <TH ALIGN="left" VALIGN="top">27-Oct-2003 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.12">2.12</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.12.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-2.12.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Fixed a bug in the parsing of output from <CODE>nessus 
+            -qp</CODE> that would cause risk level to be incorrect if 
+            using Nessus 2.0.8 or later. This required adding code to 
+            determine which version of the client is being run.</LI>
+         <LI>Added support for BugTraq ID and X-Reference fields when 
+            summarizing changes if the nessus client supports those 
+            fields.</LI>
+         <LI>Modified the pattern used to identify plugin risk factors to 
+            catch those introduced by not only <CODE>Risk factor</CODE> 
+            but also just <CODE>Risk</CODE>.</LI>
+      </UL></TD>
+   </TR>
+   <TR>
       <TH ALIGN="left" VALIGN="top">08-Oct-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.11">2.11</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.11.md5">MD5</A> / 
-         <A HREF="update-nessusrc-2.11.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.11">2.11</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.11.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-2.11.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Changed the pattern used to identify CAN/CVE numbers in the SANS
@@ -315,9 +346,9 @@ it under the same terms as Perl itself.</P>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">15-Aug-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.10">2.10</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.10.md5">MD5</A> / 
-         <A HREF="update-nessusrc-2.10.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.10">2.10</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.10.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-2.10.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Added support for bundling commandline options; eg, 
@@ -347,9 +378,9 @@ it under the same terms as Perl itself.</P>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">30-May-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.01">2.01</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.01.md5">MD5</A> / 
-         <A HREF="update-nessusrc-2.01.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.01">2.01</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.01.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-2.01.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Changed the documentation to reflect that the 
@@ -363,9 +394,9 @@ it under the same terms as Perl itself.</P>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">21-May-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.00">2.00</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.00.md5">MD5</A> / 
-         <A HREF="update-nessusrc-2.00.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.00">2.00</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.00.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-2.00.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Changed major portions of code.</LI>
@@ -381,9 +412,9 @@ it under the same terms as Perl itself.</P>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">17-Feb-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.10">1.10</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.10.md5">MD5</A> / 
-         <A HREF="update-nessusrc-1.10.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-1.10">1.10</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-1.10.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-1.10.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Am now allowing nessusd port to be configured.</LI>
@@ -398,9 +429,9 @@ it under the same terms as Perl itself.</P>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">19-Jan-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.01">1.01</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.01.md5">MD5</A> / 
-         <A HREF="update-nessusrc-1.01.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-1.01">1.01</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-1.01.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-1.01.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Am now passing along the specified rcfile when invoking 
@@ -410,9 +441,9 @@ it under the same terms as Perl itself.</P>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">13-Jan-2003 </TH>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.00">1.00</A> </TD>
-      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.00.md5">MD5</A> / 
-         <A HREF="update-nessusrc-1.00.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-1.00">1.00</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-1.00.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-1.00.asc">GPG</A> </TD>
       <TD ALIGN="left" VALIGN="top">
       <UL>
          <LI>Initial version.</LI>
