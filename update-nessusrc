@@ -171,6 +171,11 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+21-Jul-2004, v2.30, George A. Theall
+    o Changed code to direct usage message and certificate validation
+      question to stderr rather than stdout.
+    o Added support for plugin id ranges.
+
 19-Mar-2004, v2.21, George A. Theall
     o Changed the bang-path to use /usr/bin/perl rather than
       /usr/local/bin/perl.
@@ -323,14 +328,14 @@ my $script_config = $ENV{HOME} .            # config file for update-nessusrc it
 our $summary = 0;                           # Print summary report?
 our $timeout = 120;                         # timeout used w/ http GET
 our $top20_url = 'http://www.sans.org/top20/';  # location of SANS Top20
-our $useragent = 'update-nessusrc/2.21';    # used when requesting SANS Top20
+our $useragent = 'update-nessusrc/2.30';    # used when requesting SANS Top20
 
 
 ############################################################################
 # Process script configuration file, if it exists.
 #
 # nb: untaint $script_config in case it contains $ENV{HOME} or 
-#     something like that. Here, we require it consiste of
+#     something like that. Here, we require it consists of
 #     alphanumerics, '-', '.', or '/' only.
 if ($script_config =~ /^([\w\-\.\/]+)$/) {
     $script_config = $1;
@@ -452,7 +457,7 @@ $options{help} = 1
     );
 $0 =~ s/^.+\///;
 if ($options{help}) {
-    print "\n",
+    warn "\n",
         "Usage: $0 [options] rcfile\n",
         "\n",
         "Options:\n",
@@ -548,7 +553,7 @@ while (<CMD_READ>) {
         if ($got_cert == 2 && /^$/) {
             # At this point, we've gotten the cert so display it and
             # ask whether to accept it.
-            print join("\n", @errors), "\n",
+            warn join("\n", @errors), "\n",
                   "\n",
                   "Do you accept it ? (y/n) ";
             my $ans;
@@ -636,7 +641,7 @@ if ($rc) {
 
 ############################################################################
 # Adjust selected plugins as necessary.
-my @negates;
+my(@negates, @ranges);
 # - categories.
 @negates = grep(s/^!//, @plugin_cats);
 @plugin_cats = split(/,/, join(',', keys %categories))
@@ -652,6 +657,16 @@ if ($DEBUG) {
     }
 }
 # - excludes.
+@ranges = ();
+@plugin_excludes = grep(
+    (/^!?\d+\s*\-\s*\d+$/ && push(@ranges, $_), !/^!?\d+\s*\-\s*\d+$/), 
+    @plugin_excludes
+);
+foreach (@ranges) {
+    if (/^(!?)(\d+)\s*\-\s*(\d+)$/) {
+        push(@plugin_excludes, "$1${_}") foreach ($2..$3);
+    }
+}
 @negates = grep(s/^!//, @plugin_excludes);
 @plugin_excludes = split(/,/, join(',', keys %ids))
     if (grep($_ eq '_all_', @plugin_excludes));
@@ -680,6 +695,16 @@ if ($DEBUG) {
     }
 }
 # - includes.
+@ranges = ();
+@plugin_includes = grep(
+    (/^!?\d+\s*\-\s*\d+$/ && push(@ranges, $_), !/^!?\d+\s*\-\s*\d+$/), 
+    @plugin_includes
+);
+foreach (@ranges) {
+    if (/^(!?)(\d+)\s*\-\s*(\d+)$/) {
+        push(@plugin_includes, "$1${_}") foreach ($2..$3);
+    }
+}
 @negates = grep(s/^!//, @plugin_includes);
 @plugin_includes = split(/,/, join(',', keys %ids))
     if (grep($_ eq '_all_', @plugin_includes));

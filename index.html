@@ -147,8 +147,9 @@ variables defined in the script or the script configuration file:</P>
    <DT>-i, --includes &lt;plugin ids&gt;</DT>
    <DD>Include the specified plugin ids, overriding 
       <CODE>@plugin_includes</CODE>. <CODE>_all_</CODE> can be used
-      to represent all plugin ids and <CODE>!</CODE> to skip
-      specific ones.</DD>
+      to represent all plugin ids, <CODE>!</CODE> to skip specific ones,
+      and <CODE>x-y</CODE> to cover the range of plugins between ids 
+      <I>x</I> and <I>y</I> inclusive.</DD>
 
    <DT>-r, --risks &lt;risk factors&gt;</DT>
    <DD>Enable plugins that scan for vulnerabilities with the specified risk 
@@ -169,8 +170,9 @@ variables defined in the script or the script configuration file:</P>
    <DT>-x, --excludes &lt;plugin ids&gt;</DT>
    <DD>Exclude the specified plugin ids, overriding 
       <CODE>@plugin_excludes</CODE>.  <CODE>_all_</CODE> can be used
-      to represent all plugin ids and <CODE>!</CODE> to skip
-      specific ones.</DD>
+      to represent all plugin ids, <CODE>!</CODE> to skip specific ones, 
+      and <CODE>x-y</CODE> to cover the range of plugins between ids 
+      <I>x</I> and <I>y</I> inclusive.</DD>
 </DL>
 </BLOCKQUOTE>
 
@@ -204,6 +206,9 @@ variables defined in the script or the script configuration file:</P>
       run only denial of service attacks for high-risk vulnerabilities 
       specifically associated with SMTP servers.</LI>
 
+   <LI>To negate a range of plugin ids, prefix the first id only with '!';
+      eg, <CODE>!10000-100010</CODE>.</LI>
+
    <LI>Nessus will run plugins in the category <CODE>settings</CODE> as
       needed regardless of what's in the configuration file.  These plugins
       only update the knowledge bases; they do not actually send any 
@@ -225,39 +230,39 @@ variables defined in the script or the script configuration file:</P>
 <P>Examples:</P>
 <BLOCKQUOTE>
 <DL>
-   <DT>Update nessusrc using default settings (eg, non-dangerous plugins
-      and ping / tcp_connect scanners in the script as distributed).</DT>
-   <DD><CODE>update-nessusrc ~/.nessusrc</CODE></DD>
+   <DT><CODE>update-nessusrc ~/.nessusrc</CODE></DT>
+   <DD>updates nessusrc using default settings (eg, non-dangerous plugins
+      and ping / tcp_connect scanners in the script as distributed).</DD>
 
-   <DT>Same as above but also print a summary of the changes.</DT>
-   <DD><CODE>update-nessusrc -s ~/.nessusrc</CODE></DD>
+   <DT><CODE>update-nessusrc -s ~/.nessusrc</CODE></DT>
+   <DD>same as above but also print a summary of the changes.</DD>
 
-   <DT>Produce an alternate nessusrc without replacing original and
-      also prints lots of debugging info.</DT>
-   <DD><CODE>update-nessusrc -d ~/.nessusrc</CODE></DD>
+   <DT><CODE>update-nessusrc -d ~/.nessusrc</CODE></DT>
+   <DD>produces an alternate nessusrc without replacing original and
+      also prints lots of debugging info.</DD>
 
-   <DT>Update a special nessusrc to use tcp_connect scanner (plugin #10335) 
-      and test just for MS RPC interface buffer overruns (plugin #11835).</DT>
-   <DD><CODE>update-nessusrc -c "" -f "" -r "" -i "10335,11835" .nessusrc-ms03-039</CODE></DD>
+   <DT><CODE>update-nessusrc -c "" -f "" -r "" -i "10335,11835" .nessusrc-ms03-039</CODE></DT>
+   <DD>updates a special nessusrc to use tcp_connect scanner (plugin #10335) 
+      and test just for MS RPC interface buffer overruns (plugin #11835).</DD>
 
-   <DT>Update a special nessusrc w/ destructive plugins and tcp connect scanner.</DT>
-   <DD><CODE>update-nessusrc -c "denial,destructive_attack,flood,kill_host" -i 10335 ~/.nessusrc-destructive</CODE></DD>
+   <DT><CODE>update-nessusrc -c "denial,destructive_attack,flood,kill_host" -i 10335 ~/.nessusrc-destructive</CODE></DT>
+   <DD>updates a special nessusrc w/ destructive plugins and tcp connect scanner.</DD>
 
-   <DT>Update a special nessusrc w/ plugins associated with SMTP servers in
-      all categories.</DT>
-   <DD><CODE>update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp</CODE></DD>
+   <DT><CODE>update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp</CODE></DT>
+   <DD>updates a special nessusrc w/ plugins associated with SMTP servers in
+      all categories.</DD>
 
-   <DT>Update a special nessusrc w/ plugins associated with SMTP servers in
-      all categories except destructive_attack.</DT>
-   <DD><CODE>update-nessusrc -c "_all_" -c !destructive_attack -f "SMTP problems" ~/.nessusrc-smtp</CODE></DD>
+   <DT><CODE>update-nessusrc -c "_all_" -c !destructive_attack -f "SMTP problems" ~/.nessusrc-smtp</CODE></DT>
+   <DD>updates a special nessusrc w/ plugins associated with SMTP servers in
+      all categories except destructive_attack.</DD>
 
-   <DT>Update a special nessusrc w/ plugins that scan only for critical-
-      and high-risk vulnerabilities.</DT>
-   <DD><CODE>update-nessusrc -r "(Critical|High)" ~/.nessusrc-risky</CODE></DD>
+   <DT><CODE>update-nessusrc -r "(Critical|High)" ~/.nessusrc-risky</CODE></DT>
+   <DD>updates a special nessusrc w/ plugins that scan only for critical-
+      and high-risk vulnerabilities.</DD>
 
-   <DT>Update a special nessusrc to scan for the SANS Top 20 
-      Vulnerabilities.</DT>
-   <DD><CODE>update-nessusrc -t ~/.nessusrc-top20</CODE></DD>
+   <DT><CODE>update-nessusrc -t ~/.nessusrc-top20</CODE></DT>
+   <DD>Update a special nessusrc to scan for the SANS Top 20 
+      Vulnerabilities.</DD>
 </DL>
 </BLOCKQUOTE>
 
@@ -311,6 +316,18 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Version </TH>
       <TH ALIGN="left">Verification </TH>
       <TH ALIGN="left">Notes<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="left" VALIGN="top">21-Jul-2004 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.30">2.30</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.30.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-2.30.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Changed code to direct usage message and certificate validation
+            question to stderr rather than stdout.</LI>
+         <LI>Added support for plugin id ranges.</LI>
+      </UL></TD>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">19-Mar-2004 </TH>
