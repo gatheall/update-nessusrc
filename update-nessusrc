@@ -452,7 +452,7 @@ while (<CMD_READ>) {
         if ($got_cert == 2 && /^$/) {
             # At this point, we've gotten the cert so display it and
             # ask whether to accept it.
-            warn join("\n", @errors), "\n",
+            print STDERR join("\n", @errors), "\n",
                   "\n",
                   "Do you accept it ? (y/n) ";
             my $ans;
