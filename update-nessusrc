@@ -3,33 +3,31 @@
 
 =head1 NAME
 
-update-nessusrc - Updates nessus configuration file with new plugins.
+update-nessusrc - Updates Nessus configuration file with new plugins.
 
 
 =head1 SYNOPSIS
 
-  # update default nessusrc w/ non-destructive plugins and ping / 
+  # updates default nessusrc w/ non-destructive plugins and ping / 
   #   nmap_wrapper scanners.
   update-nessusrc ~/.nessusrc
 
-  # same as above, but also explicitly exclude disabled plugins from nessusrc.
-  update-nessusrc -s ~/.nessusrc
-
-  # create an updated nessusrc and include lots of debugging info.
+  # produces an alternate nessusrc without replacing original and
+  #   also prints lots of debugging info.
   update-nessusrc -d ~/.nessusrc
 
-  # update special nessusrc w/ DoS plugins and tcp connect() scanner.
-  update-nessusrc -c "denial,destructive_attack" -i 10335 ~/.nessusrc-dos
+  # updates special nessusrc w/ only DoS plugins and tcp connect() scanner.
+  update-nessusrc -c "denial,destructive_attack,kill_host" -i 10335 ~/.nessusrc-dos
 
 
 =head1 DESCRIPTION
 
 This script queries a Nessus server for its list of available plugins
-and updates a nessus configuration file specified on the commandline. 
-Specifically, it completely updates the sections SCANNER_SET and
-PLUGIN_SET whenever it is run.  Use it periodically (eg, via cron) to
-keep abreast of additions (and deletions) in the set of plugins
-available through that server. 
+and updates a Nessus client configuration file specified on the
+commandline.  Specifically, it completely updates the sections
+SCANNER_SET and PLUGIN_SET whenever it is run.  Use it periodically (eg,
+via cron) to keep abreast of additions (and deletions) in the set of
+plugins available through that server. 
 
 The decision about which plugins to enable can be controlled either by
 one or more configurable variables or by commandline arguments:
@@ -39,8 +37,11 @@ one or more configurable variables or by commandline arguments:
     @plugin_excludes    -x|--excludes       Excludes plugin ids explicitly.
     @plugin_includes    -i|--includes       Includes plugin ids explicitly.
 
-Plugins explicitly excluded will never be used regardless of the
-other variables or commandline options.
+Plugins explicitly excluded will never be used regardless of the other
+variables or commandline options.  Also, commandline arguments take
+precedence over variables defined in the script; thus, for example, you
+can disable all plugin categories by using the commandline argument C<-c
+"">. 
 
 For a list of all plugin ids, see L<http://cgi.nessus.org/plugins/>. 
 For a list of plugin categories, see the file L<doc/WARNING.En> in the
@@ -51,36 +52,34 @@ Other settings include:
     Variable            Commandline         Purpose
     $DEBUG              -d|--debug          Turn on debugging.  NB: leaves
                                                 rc file unchanged.
-    $sparse_sets        -s|--sparse         Don't include excluded / unused 
-                                                plugins in rc file.
 
-This script should work with most recent versions of Perl and nessus.  I
-developed it using Perl 5.8.0 and Nessus 1.27.  For the latter, it
-requires only that the client support the options "-qp" to list plugins. 
+update-nessusrc is written in Perl and calls the Nessus client to obtain
+a list of current plugins (using the option "-p").  It should work on any
+unix-like system with Perl 5 and Nessus 1.1.14 or better. 
 
 
 =head1 KNOWN BUGS AND CAVEATS
 
 Currently, I am not aware of any bugs in this script.  
 
-This script is not a substitute for the nessus client in terms of
+This script is not a substitute for the Nessus client in terms of
 generating a configuration file.  On one hand, the configuration file
 must contain lines delimiting the SCANNER_SET and PLUGIN_SET sections
 for them to be updated.  On the other, several plugins require
 additional configuration - simply adding them to the list of plugins
 used may not be optimal.
 
-Please note: this script does not report the changes made to the
-nessusrc file, it just does them.
+This script does not report the changes made to the nessusrc file, it
+just does them. 
 
-Finally, realize that this script will likely hold a userid and password
-used to connect to the nessus server; protect it accordingly!
+Finally, realize that this script will hold a userid and password used
+to connect to a Nessus server; protect it accordingly!
 
 
 =head1 DIAGNOSTICS
 
 Fatal errors will be reported using croak; these include the 
-inability to run the nessus client and failures to read / write the
+inability to run the Nessus client and failures to read / write the
 nessusrc files.
 
 
@@ -105,10 +104,19 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+17-Feb-2003, George A. Theall
+    o Am now allowing nessusd port to be configured.
+    o Removed support for '-s' option since I discovered Nessus
+      actually treats plugins not listed in a configuration file as
+      enabled.
+    o Added support for plugin categories introduced in Nessus 1.3.0.
+    o Am now reporting an error if the nessus client produces an error,
+      as opposed to can't be run.
+
 19-Jan-2003, George A. Theall
     o Am now passing along the specified rcfile when invoking the 
-      client so settings such as cert_file and key_file can be
-      made.
+      client so settings such as cert_file and key_file in that
+      file will be used.
 
 13-Jan-2003, George A. Theall
     o Initial version.
@@ -133,6 +141,7 @@ $ENV{PATH} = '/usr/local/bin';              # nb: should be where nessus is
 my $DEBUG = 0;
 
 my $nessusd_host = '' || croak "*** You must set \$nessusd_host! ***\n";
+my $nessusd_port = 1241;                    # nb: you may need to change this!
 my $nessusd_user = '' || croak "*** You must set \$nessusd_user! ***\n";
 my $nessusd_user_pass = '' || croak "*** You must set \$nessusd_user_pass! ***\n";
 
@@ -141,6 +150,7 @@ my @plugin_cats = (                         # categories of plugins to enable
     # 'denial',                               # - tries to perform DoS.
     # 'destructive_attack',                   # - tries to kill services / software
     'infos',                                # - gathers info about services / software
+    #'kill_host',                            # - tries to kill the OS.
     'mixed',                                # - mixed attack
     # 'scanner',                              # - port scanners / ping
     'settings',                             # - sets options but doesn't do tests
@@ -153,14 +163,12 @@ my @plugin_includes = (
     '10180',                                # Ping the remote host
     '10336',                                # nmap_wrapper scan
 );
-my $sparse_sets = 0;                        # include lines for unused plugins?
 
 
 ############################################################################
 # Process commandline arguments.
 my %options = (
     'debug'  => \$DEBUG,
-    'sparse' => \$sparse_sets,
 );
 GetOptions(
     \%options,
@@ -169,7 +177,6 @@ GetOptions(
     "help|?!",
     "excludes|x=s@",
     "includes|i=s@",
-    "sparse|s!",
 );
 my $rcfile = shift || '';
 if (! -f $rcfile or $options{help}) {
@@ -192,14 +199,18 @@ else {
 
 ############################################################################
 # Get list of plugins.
-my $cmd = "nessus -c $rcfile -qp $nessusd_host 1241 $nessusd_user $nessusd_user_pass";
+my $cmd = "nessus -c $rcfile -qp $nessusd_host $nessusd_port $nessusd_user $nessusd_user_pass";
 print "debug: running '$cmd'\n" if $DEBUG;
 our(@plugin_set, @scanner_set);         # nb: must be valid globals!
+my @errors;
 open(CMD, "$cmd 2>&1 |") or croak "Can't run '$cmd' - $!\n";
 while (<CMD>) {
     chomp;
     print "debug:   >>$_<<\n" if $DEBUG;
-    next unless (/^\d+\|/);             # nb: skip lines not starting w/ id
+    unless (/^\d+\|/) {                 # nb: doesn't start w/ id => error
+        push(@errors, $_);              #     so save it for later
+        next;                           #     and skip rest of processing
+    }
     my($id, $cat) = (split(/\|/, $_))[0,3];
     my $use = 'no';
     if ((grep(/^$cat$/i, @plugin_cats) or grep(/^$id$/, @plugin_includes)) and
@@ -207,7 +218,6 @@ while (<CMD>) {
         $use = 'yes';
     }
     print "debug:   id=>>$id<<; category=>>$cat<<; use=>>$use<<\n" if $DEBUG;
-    next if ($use eq 'no' and $sparse_sets);
     if ($cat eq 'scanner') {
         push(@scanner_set, " $id = $use");
     }
@@ -216,6 +226,15 @@ while (<CMD>) {
     }
 }
 close(CMD);
+my $rc = $? >> 8;
+if ($rc) {
+    my $errmsg = pop(@errors) || 'Unknown error running nessus';
+    if (@errors) {
+        $_ = pop(@errors);
+        $errmsg .= " - $_" if (s/^\S+ : (.)(.*)$/\L$1\E$2/);
+    }
+    croak "$errmsg (rc=$rc)!\n";
+}
 
 
 ############################################################################

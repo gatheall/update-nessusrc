@@ -212,6 +212,23 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Notes<BR></TH>
    </TR>
    <TR>
+      <TH ALIGN="left" VALIGN="top">17-Feb-2003 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.10">1.10</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.10.md5">MD5</A> / 
+         <A HREF="update-nessusrc-1.10.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Am now allowing nessusd port to be configured.</LI>
+         <LI>Removed support for <CODE>-s</CODE> option since I discovered 
+            Nessus actually treats plugins not listed in a configuration 
+            file as enabled.</LI>
+         <LI>Added support for plugin categories introduced in 
+            Nessus 1.3.0.</LI>
+         <LI>Am now reporting an error if the nessus client produces 
+            an error, as opposed to can't be run.</LI>
+      </UL></TD>
+   </TR>
+   <TR>
       <TH ALIGN="left" VALIGN="top">19-Jan-2003 </TH>
       <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.01">1.01</A> </TD>
       <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-1.01.md5">MD5</A> / 
