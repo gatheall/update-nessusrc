@@ -126,7 +126,8 @@ nessusrc files.
 
 =head1 SEE ALSO
 
-L<nessus-update-plugins(5)>, L<http://cgi.nessus.org/plugins/>.
+L<nessus-update-plugins(5)>, L<http://cgi.nessus.org/plugins/>,
+L<http://www.tifaware.com/perl/update-nessusrc/>.
 
 
 =head1 AUTHOR
@@ -144,6 +145,11 @@ it under the same terms as Perl itself.
 
 
 =head1 HISTORY
+
+08-Oct-2003, v2.11, George A. Theall
+    o Changed the pattern used to identify CAN/CVE numbers in the SANS
+      Top 20 List so it works with version 4.0 of that list, released
+      today.
 
 15-Aug-2003, v2.10, George A. Theall
     o Added support for bundling commandline options; eg, "-ds" is 
@@ -259,7 +265,7 @@ my $proxy = '';
 my $summary = 0;                            # Print summary report?
 my $timeout = 120;                          # timeout used w/ http GET
 my $top20_url = 'http://www.sans.org/top20/';   # location of SANS' Top20
-my $useragent = 'update-nessusrc/2.10';     # used when requesting SANS' Top20
+my $useragent = 'update-nessusrc/2.11';     # used when requesting SANS' Top20
 
 
 ############################################################################
@@ -516,7 +522,7 @@ if ($options{top20}) {
     my(%top20_cves, %unique);
     my @top20_cves = grep(
         !/(CVE|CAN)$/i && ($_ = uc($_)) && !$unique{$_}++,
-        sort($response->content =~ /cvename=((cve|can)-\d{4}-\d{4})\b/ig)
+        sort($response->content =~ /http:\/\/.+\b((cve|can)-\d{4}-\d{4})\b/ig)
     );
 
     # Update arrays to use plugins associated with Top 20 vulnerabilities.
