@@ -170,6 +170,15 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+11-Oct-2004, v2.33, George A. Theall
+    o Changed patterns used to identify the start and end of plugin
+      sets to allow for leading and trailing whitespace on the line,
+      which should avoid generating config files with multiple plugin
+      sets.
+    o Added distribution URL to $useragent.
+    o Added warning messages if a scanner or plugin set is not found
+      in the configuration file.
+
 20-Aug-2004, v2.32, George A. Theall
     o Changed $useragent to reflect current version number. :-(
 
@@ -334,7 +343,8 @@ my $script_config = $ENV{HOME} .            # config file for update-nessusrc it
 our $summary = 0;                           # Print summary report?
 our $timeout = 120;                         # timeout used w/ http GET
 our $top20_url = 'http://www.sans.org/top20/';  # location of SANS Top20
-our $useragent = 'update-nessusrc/2.32';    # used when requesting SANS Top20
+our $useragent = 'update-nessusrc/2.33' .   # used when requesting SANS Top20
+                    ' (http://www.tifaware.com/perl/update-nessusrc/)';
 
 
 ############################################################################
@@ -873,12 +883,14 @@ while (<RC>) {
     push(@lines, $_) unless ($skip);
 
     # If starting to process a plugin or scanner set, initialize some vars.
-    if (/^begin\((PLUGIN|SCANNER)_SET\)$/i) {
+    if (/^\s*begin\((PLUGIN|SCANNER)_SET\)\s*$/i) {
+        warn "debug:   found the start of $1 set\n" if $DEBUG;
         $set = lc($1) . 's';
         $skip = 1;
     }
     # If at end of set, reset some vars.
-    elsif (/^end\((PLUGIN|SCANNER)_SET\)$/i) {
+    elsif (/^\s*end\((PLUGIN|SCANNER)_SET\)\s*$/i) {
+        warn "debug:   found the end of $1 set\n" if $DEBUG;
         $set = "";
         $skip = 0;
         push(@lines, $_);               # nb: we'd otherwise skip this!!!
@@ -897,8 +909,14 @@ while (<RC>) {
 close(RC);
 
 # Add SCANNER_SET and/or PLUGIN_SET sections if missing.
-push(@lines, 'begin(SCANNER_SET)', 'end(SCANNER_SET)') unless (@scanners_old);
-push(@lines, 'begin(PLUGIN_SET)', 'end(PLUGIN_SET)') unless (@plugins_old);
+unless (@scanners_old) {
+    warn "warning: no scanner set found in '$rcfile'; adding an empty one.\n";
+    push(@lines, 'begin(SCANNER_SET)', 'end(SCANNER_SET)');
+}
+unless (@plugins_old) {
+    warn "warning: no plugin set found in '$rcfile'; adding an empty one.\n";
+    push(@lines, 'begin(PLUGIN_SET)', 'end(PLUGIN_SET)');
+}
 
 
 ############################################################################
