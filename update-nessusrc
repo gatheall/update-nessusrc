@@ -105,6 +105,11 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+19-Jan-2003, George A. Theall
+    o Am now passing along the specified rcfile when invoking the 
+      client so settings such as cert_file and key_file can be
+      made.
+
 13-Jan-2003, George A. Theall
     o Initial version.
 
@@ -187,7 +192,7 @@ else {
 
 ############################################################################
 # Get list of plugins.
-my $cmd = "nessus -qp $nessusd_host 1241 $nessusd_user $nessusd_user_pass";
+my $cmd = "nessus -c $rcfile -qp $nessusd_host 1241 $nessusd_user $nessusd_user_pass";
 print "debug: running '$cmd'\n" if $DEBUG;
 our(@plugin_set, @scanner_set);         # nb: must be valid globals!
 open(CMD, "$cmd 2>&1 |") or croak "Can't run '$cmd' - $!\n";
