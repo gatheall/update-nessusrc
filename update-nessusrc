@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -wT
+#!/usr/bin/perl -wT
 
 
 =head1 NAME
@@ -171,6 +171,14 @@ it under the same terms as Perl itself.
 
 =head1 HISTORY
 
+19-Mar-2004, v2.21, George A. Theall
+    o Changed the bang-path to use /usr/bin/perl rather than
+      /usr/local/bin/perl.
+    o Changed the usage message.
+    o Removed any trailing spaces from Risk Factor, which otherwise 
+      might present problems when trying to enable plugins based on 
+      risk.
+
 26-Jan-2004, v2.20, George A. Theall
     o Added support for '-h' option.
     o Added support for script configuration files. [Suggested by David 
@@ -315,7 +323,7 @@ my $script_config = $ENV{HOME} .            # config file for update-nessusrc it
 our $summary = 0;                           # Print summary report?
 our $timeout = 120;                         # timeout used w/ http GET
 our $top20_url = 'http://www.sans.org/top20/';  # location of SANS Top20
-our $useragent = 'update-nessusrc/2.20';    # used when requesting SANS Top20
+our $useragent = 'update-nessusrc/2.21';    # used when requesting SANS Top20
 
 
 ############################################################################
@@ -435,19 +443,34 @@ GetOptions(
     "risks|r=s@",
     "summary|s!",
     "top20|t!",
-);
+) or $options{help} = 1;
 my $rcfile = shift || '';
 $options{help} = 1 
     if (
         $options{top20} and ($options{categories} or $options{families}) or
         !$rcfile
     );
+$0 =~ s/^.+\///;
 if ($options{help}) {
-    print "Usage: $0 [-c|--categories \"cats\"] [-d|--debug] [-f|--families \"fams\"] [-i|--includes \"ids\"] [-r|--risks \"risks\"] [-s|--summary] [-x|--excludes \"ids\"] rcfile\n",
-          "  or\n",
-          "       $0 [-d|--debug] [-i|--includes \"ids\"] [-s|--summary] [-t|--top20] [-x|--excludes \"ids\"] rcfile\n",
-          "  or\n",
-          "       $0 [-h|-?|--help]\n";
+    print "\n",
+        "Usage: $0 [options] rcfile\n",
+        "\n",
+        "Options:\n",
+        "  -?, -h, --help             Display this help and exit.\n",
+        "  -c, --categories <cats>    Enable plugins in the specified categories.\n",
+        "  -d, --debug                Display copious debugging messages and create\n",
+        "                               a scratch config file but don't actually\n",
+        "                               replace the original.\n",
+        "  -f, --families <fams>      Enable plugins in the specified families.\n",
+        "  -i, --includes <ids>       Enable specified plugin ids.\n",
+        "  -r, --risks <risks>        Enable plugins that scan for vulnerabilities\n",
+        "                               with the specified risk factors, which\n",
+        "                               should be regular expressions.\n",
+        "  -s, --summary              Display summary of chagnes.\n",
+        "  -t, --top20                Include plugins to scan for the SANS Top 20\n",
+        "                               Vulnerabilities. Can not be combined with\n",
+        "                               '--categories', '--families', or '-risks'.\n",
+        "  -x, --excludes <ids>       Disable specified plugin ids.\n";
     exit(9);
 }
 unless (-s $rcfile) {
@@ -569,7 +592,7 @@ while (<CMD_READ>) {
         #     for by the plugin.
         if ($label eq 'description') {
             my $risk = 'n/a';
-            if (/(Risk|Risk factor)\s*:\s*([^\\\n]+)/is) {
+            if (/.+(Risk|Risk factor)\s*:\s*(.+?)\s*(\\n|$)/is) {
                 $risk = $2;
             }
             $plugin{$id}{risk} = $risk;
