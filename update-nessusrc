@@ -9,7 +9,7 @@ update-nessusrc - Updates Nessus configuration file with new plugins.
 =head1 SYNOPSIS
 
   # updates default nessusrc w/ non-destructive plugins and ping / 
-  #   nmap_wrapper scanners.
+  #   tcp connect() scanners.
   update-nessusrc ~/.nessusrc
 
   # same as above but also print a summary of the changes.
@@ -22,9 +22,17 @@ update-nessusrc - Updates Nessus configuration file with new plugins.
   # updates a special nessusrc w/ only DoS plugins and tcp connect() scanner.
   update-nessusrc -c "denial,destructive_attack,kill_host" -i 10335 ~/.nessusrc-dos
 
-  # updates a special nessusrc w/ all categories of plugins associated with
-  #   SMTP servers.
+  # updates a special nessusrc w/ plugins associated with SMTP servers in
+  #   all categories.
   update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp
+
+  # updates a special nessusrc w/ plugins associated with SMTP servers in
+  #   all categories except destructive_attack.
+  update-nessusrc -c "_all_" -c !destructive_attack -f "SMTP problems" ~/.nessusrc-smtp
+
+  # updates a special nessusrc w/ plugins that scan only for critical-
+  #   and high-risk vulnerabilities.
+  update-nessusrc -r "(Critical|High)" ~/.nessusrc-dos
 
   # updates a special nessusrc to scan for SANS' Top 20 Vulnerabilities.
   update-nessusrc -t ~/.nessusrc-top20
@@ -47,6 +55,7 @@ one or more configurable variables or by commandline arguments:
     @plugin_fams        -f|--families       Enables plugin families.
     @plugin_excludes    -x|--excludes       Excludes plugin ids explicitly.
     @plugin_includes    -i|--includes       Includes plugin ids explicitly.
+    @plugin_risks       -r|--risks          Enables plugin based on risk factors.
     n/a                 -t|--top20          Enables plugins for SANS' Top 20.
 
 Plugins explicitly excluded will never be used regardless of the other
@@ -59,6 +68,7 @@ For a list of plugin ids, see L<http://cgi.nessus.org/plugins/>; for
 plugin families, see
 L<http://cgi.nessus.org/plugins/dump.php3?viewby=family>; and for plugin
 categories, see the file L<doc/WARNING.En> in the nessus-core source. 
+Unfortunately, risk factors are not (yet?) standardized.
 
 Other settings include:
 
@@ -78,6 +88,7 @@ install them yourself; visit CPAN (L<http://search.cpan.org/>) for help
 and note that they are included as part of the C<LWP> library
 (L<http://search.cpan.org/dist/libwww-perl/>). 
 
+
 =head1 KNOWN BUGS AND CAVEATS
 
 Currently, I am not aware of any bugs in this script. 
@@ -93,9 +104,10 @@ If you absolutely can not run the client as a GUI, keep in mind that if
 you are using SSL to encrypt client-server communications, you will need
 to run the client at least once to connect to the server and accept the
 certificate it presents, otherwise, update-nessusrc will hang when run. 
-One way to do this is to run update-nessusrc in debug mode and break out
-of it when it displays the server's certificate; then, run the client
-manually using the same commandline as reported by update-nessusrc. 
+One way to do this is to run update-nessusrc in debug mode, note the
+nessus commandline it runs, break out of it when it displays the
+server's certificate, and then run the client manually using the same
+commandline noted earlier. 
 
 To ensure an accurate scan for the SANS' Top 20 Vulnerabilities, you
 must make sure C<auto_enable_dependencies> is set to C<yes> in the
@@ -132,6 +144,29 @@ it under the same terms as Perl itself.
 
 
 =head1 HISTORY
+
+15-Aug-2003, v2.10, George A. Theall
+    o Added support for bundling commandline options; eg, "-ds" is 
+      the same as "-d -s".
+    o Added ability to negate categories, families, and/or plugin ids 
+      so you can say something like "-f _all_ -f !CISCO" to use 
+      plugins from all families except CISCO. Also, extended use of 
+      '_all_' to plugins included or excluded. 
+    o Added ability to select by risk factor of the vulnerability
+      scanned for by the plugin. [Suggested by Phil Agcaoili.]
+    o Added warnings about any plugin categories, families, ids, or
+      risks selected but not available via the Nessus server.
+    o Changed defaults for @plugins_cats and @plugins_fams so that
+      all non-dangerous plugins are enabled by default in a manner
+      that does not rely on explicitly listing category and/or 
+      family names. Also, changed default scanner from nmap to tcp 
+      connect() in @plugin_includes.
+    o Changed code to provide help rather than complain about a 
+      non-existent configuration file if none is specified on the
+      commandline.
+    o Changed code to strip extraneous information from the version 
+      string and also include the risk factor of the vulnerability 
+      scanned for by a plugin when summarizing changes.
 
 30-May-2003, v2.01, George A. Theall
     o Changed the documentation to reflect that the '--top20' option 
@@ -194,48 +229,25 @@ my $nessusd_user = '' || croak "*** You must set \$nessusd_user! ***\n";
 my $nessusd_user_pass = '' || croak "*** You must set \$nessusd_user_pass! ***\n";
 
 my @plugin_cats = (                         # categories of plugins to enable
-    'attack',                               # - may steal info but does no harm
-    # 'denial',                               # - tries to perform DoS.
-    # 'destructive_attack',                   # - tries to kill services / software
-    'infos',                                # - gathers info about services / software
-    #'kill_host',                            # - tries to kill the OS.
-    'mixed',                                # - mixed attack
-    # 'scanner',                              # - port scanners / ping
-    'settings',                             # - sets options but doesn't do tests
-    'unknown',                              # - ?
+    '_all_',                                # - all categories
+    '!denial',                              # -   except DoS
+    '!destructive_attack',                  # -   except kill services / software
+    '!kill_host',                           # -   except kill the OS.
+    '!scanner',                             # -   except port scanners (we'll include individually)
 );
 my @plugin_fams = (                         # families of plugins to enable
-    'Backdoors',
-    'CGI abuses',
-    'CISCO',
-    'Default Unix Accounts',
-    'Denial of Service',
-    'FTP',
-    'Finger abuses',
-    'Firewalls',
-    'Gain a shell remotely',
-    'Gain root remotely',
-    'General',
-    'Misc.',
-    'NIS',
-    'Netware',
-    'Port scanners',
-    'RPC',
-    'Remote file access',
-    'SMTP problems',
-    'SNMP',
-    'Settings',
-    'Untested',
-    'Useless services',
-    'Windows',
-    'Windows : User management',
+    '_all_',                                # - all families
 );
 my @plugin_excludes = (
     # empty
 );
 my @plugin_includes = (
     '10180',                                # Ping the remote host
-    '10336',                                # nmap_wrapper scan
+    '10335',                                # tcp_connect() scan
+);
+my @plugin_risks = (                        # risk factors for plugins to enable
+                                            # nb: this should be a regex
+    '.',                                    # - all risk factors
 );
 # nb: sample http proxy settings
 #     - no proxy.
@@ -247,7 +259,7 @@ my $proxy = '';
 my $summary = 0;                            # Print summary report?
 my $timeout = 120;                          # timeout used w/ http GET
 my $top20_url = 'http://www.sans.org/top20/';   # location of SANS' Top20
-my $useragent = 'update-nessusrc/2.00';     # used when requesting SANS' Top20
+my $useragent = 'update-nessusrc/2.10';     # used when requesting SANS' Top20
 
 
 ############################################################################
@@ -256,6 +268,7 @@ my %options = (
     'debug'    => \$DEBUG,
     'summary'  => \$summary,
 );
+Getopt::Long::Configure('bundling');
 GetOptions(
     \%options,
     "categories|c=s@",
@@ -264,20 +277,24 @@ GetOptions(
     "help|?!",
     "excludes|x=s@",
     "includes|i=s@",
+    "risks|r=s@",
     "summary|s!",
     "top20|t!",
 );
 my $rcfile = shift || '';
-unless (-s $rcfile) {
-    croak "'$rcfile' does not exist or is empty!\n";
-}
 $options{help} = 1 
-    if ($options{top20} and ($options{categories} or $options{families}));
+    if (
+        $options{top20} and ($options{categories} or $options{families}) or
+        !$rcfile
+    );
 if ($options{help}) {
-    print "Usage: $0 [-c|--categories \"cats\"] [-d|--debug] [-f|--families \"fams\"] [-i|--includes \"ids\"] [-s|--summary] [-x|--excludes \"ids\"] rcfile\n",
+    print "Usage: $0 [-c|--categories \"cats\"] [-d|--debug] [-f|--families \"fams\"] [-i|--includes \"ids\"] [-r|--risks \"risks\"] [-s|--summary] [-x|--excludes \"ids\"] rcfile\n",
           "  or\n",
           "       $0 [-d|--debug] [-i|--includes \"ids\"] [-s|--summary] [-t|--top20] [-x|--excludes \"ids\"] rcfile\n";
     exit(9);
+}
+unless (-s $rcfile) {
+    croak "'$rcfile' does not exist or is empty!\n";
 }
 if ($rcfile =~ /^([\/\w\d\-\._]+)$/) {
     $rcfile = $1;
@@ -293,6 +310,8 @@ else {
     if ($options{excludes});
 @plugin_includes = split(/,\s*/, join(',', @{$options{includes}}))
     if ($options{includes});
+@plugin_risks = split(/,\s*/, join(',', @{$options{risks}})) 
+    if ($options{risks});
 
 
 ############################################################################
@@ -300,7 +319,7 @@ else {
 print STDERR "debug: getting list of available plugins.\n" if $DEBUG;
 my $cmd = "nessus -c $rcfile -qp $nessusd_host $nessusd_port $nessusd_user $nessusd_user_pass";
 print STDERR "debug:   running '$cmd'\n" if $DEBUG;
-my(@errors, %plugin);
+my(%categories, @errors, %families, %ids, %plugin);
 our(@plugins_new, @scanners_new);       # nb: must be valid globals!
 open(CMD, "$cmd 2>&1 |") or croak "Can't run '$cmd' - $!\n";
 while (<CMD>) {
@@ -329,11 +348,29 @@ while (<CMD>) {
                 'description'
             ) {
         $_ = shift @fields;
+        # nb: determine the risk factor of the vulnerability scanned 
+        #     for by the plugin.
+        if ($label eq 'description') {
+            my $risk = 'unknown';
+            if (/Risk factor\s*:\s*([^\\\n]+)/is) {
+                $risk = $1;
+            }
+            $plugin{$id}{risk} = $risk;
+            print STDERR "debug:     risk=>>$risk<<\n" if $DEBUG;
+        }
         # nb: some fields we'll skip to save memory.
         next if (grep(/^$label$/, ('copyright', 'description')));
+        # nb: create master lists of categories and families.
+        $categories{$_}++ if ($label eq 'category');
+        $families{$_}++ if ($label eq 'family');
+        # nb: strip extraneous characters from version string.
+        s/^\$Revision: (\S+) \$$/$1/ if ($label eq 'version');
+        # 
         $plugin{$id}{$label} = $_;
         print STDERR "debug:     $label=>>$_<<\n" if $DEBUG;
     }
+    # create master list of ids too!
+    $ids{$id}++;
     if ($plugin{$id}{'category'} eq 'scanner') {
         push(@scanners_new, $id);
     }
@@ -356,7 +393,96 @@ if ($rc) {
 
 
 ############################################################################
+# Adjust selected plugins as necessary.
+my @negates;
+# - categories.
+@negates = grep(s/^!//, @plugin_cats);
+@plugin_cats = split(/,/, join(',', keys %categories))
+    if (grep($_ eq '_all_', @plugin_cats));
+foreach my $negate (@negates) {
+    @plugin_cats = grep($_ ne $negate, @plugin_cats);
+}
+@plugin_cats = sort(@plugin_cats);
+if ($DEBUG) {
+    print STDERR "debug: plugin categories to enable:\n";
+    foreach (@plugin_cats) {
+        print STDERR "debug:   $_\n";
+    }
+}
+# - excludes.
+@negates = grep(s/^!//, @plugin_excludes);
+@plugin_excludes = split(/,/, join(',', keys %ids))
+    if (grep($_ eq '_all_', @plugin_excludes));
+foreach my $negate (@negates) {
+    @plugin_excludes = grep($_ ne $negate, @plugin_excludes);
+}
+@plugin_excludes = sort(@plugin_excludes);
+if ($DEBUG) {
+    print STDERR "debug: plugin ids to explicitly exclude:\n";
+    foreach (@plugin_excludes) {
+        print STDERR "debug:   $_\n";
+    }
+}
+# - families.
+@negates = grep(s/^!//, @plugin_fams);
+@plugin_fams = split(/,/, join(',', keys %families))
+    if (grep($_ eq '_all_', @plugin_fams));
+foreach my $negate (@negates) {
+    @plugin_fams = grep($_ ne $negate, @plugin_fams);
+}
+@plugin_fams = sort(@plugin_fams);
+if ($DEBUG) {
+    print STDERR "debug: plugin families to enable:\n";
+    foreach (@plugin_fams) {
+        print STDERR "debug:   $_\n";
+    }
+}
+# - includes.
+@negates = grep(s/^!//, @plugin_includes);
+@plugin_includes = split(/,/, join(',', keys %ids))
+    if (grep($_ eq '_all_', @plugin_includes));
+foreach my $negate (@negates) {
+    @plugin_includes = grep($_ ne $negate, @plugin_includes);
+}
+@plugin_includes = sort(@plugin_includes);
+if ($DEBUG) {
+    print STDERR "debug: plugin ids to enable:\n";
+    foreach (@plugin_includes) {
+        print STDERR "debug:   $_\n";
+    }
+}
+# - risks.
+#   nb: negation isn't allowed here; instead, we expect regular expressions.
+@plugin_risks = sort(@plugin_risks);
+if ($DEBUG) {
+    print STDERR "debug: plugin risks to enable:\n";
+    foreach (@plugin_risks) {
+        print STDERR "debug:   $_\n";
+    }
+}
+
+
+############################################################################
+# Warn about selections not currently available.
+foreach my $cat (@plugin_cats) {
+    print STDERR "warning: no plugins found matching category '$cat'.\n"
+        unless (grep($cat eq $_, keys %categories));
+}
+foreach my $fam (@plugin_fams) {
+    print STDERR "warning: no plugins found matching family '$fam'.\n"
+        unless (grep($fam eq $_, keys %families));
+}
+foreach my $id (@plugin_excludes, @plugin_includes) {
+    print STDERR "warning: no plugins found matching id '$id'.\n"
+        unless (grep($id eq $_, keys %ids));
+}
+# nb: we can't warn about risks since we allow for regular expressions.
+
+
+############################################################################
 # Determine whether plugins should now be enabled.
+#
+# - if Top 20 option selected, generate list of plugins to use dynamically.
 if ($options{top20}) {
     use LWP::UserAgent;
 
@@ -396,6 +522,7 @@ if ($options{top20}) {
     # Update arrays to use plugins associated with Top 20 vulnerabilities.
     @plugin_cats = ('settings');
     @plugin_fams = ('Settings');
+    @plugin_risks = ('.');
     foreach my $id (keys %plugin) {
         next unless (exists $plugin{$id}{'cve-id'});
         my $cve = $plugin{$id}{'cve-id'};
@@ -406,11 +533,13 @@ if ($options{top20}) {
             }
         }
     }
-    print STDERR "debug: Top 20 vulnerabilities matched with plugins:\n" if $DEBUG;
-    foreach my $cve (sort keys %top20_cves) {
-        my $id = $top20_cves{$cve};
-        $id =~ s/ & $//;
-        print STDERR "debug:   $cve -> plugin(s) $id\n" if $DEBUG;
+    if ($DEBUG) {
+        print STDERR "debug: Top 20 vulnerabilities matched with plugins:\n";
+        foreach my $cve (sort keys %top20_cves) {
+            my $id = $top20_cves{$cve};
+            $id =~ s/ & $//;
+            print STDERR "debug:   $cve -> plugin(s) $id\n";
+        }
     }
 
     if (grep(!exists $top20_cves{$_}, @top20_cves)) {
@@ -420,10 +549,13 @@ if ($options{top20}) {
             "\n";
     }
 }
+
+# - determine whether to enable available plugins.
 print STDERR "debug: determining whether to enable plugins.\n" if $DEBUG;
 foreach my $id (@scanners_new, @plugins_new) {
     my $category = $plugin{$id}{category};
     my $family = $plugin{$id}{family};
+    my $risk = $plugin{$id}{risk};
 
     my $use = 'no';
     # nb: use plugin if...
@@ -434,16 +566,18 @@ foreach my $id (@scanners_new, @plugins_new) {
             (
                 # either the Id is explicitly included or...
                 grep(/^$id$/, @plugin_includes) or 
-                # the family and category both match what was selected.
+                # the category, family, and risk match what was selected.
                 (
-                    (grep(/^$family$/, @plugin_fams) or grep(/^_all_$/i, @plugin_fams)) and
-                    (grep(/^$category$/i, @plugin_cats) or grep(/^_all_$/i, @plugin_cats))
+                    grep(/^$category$/, @plugin_cats) and
+                    grep(/^$family$/, @plugin_fams) and
+                    grep($risk =~ /$_/i, @plugin_risks)
                 )
             )
         );
     print STDERR "debug:   id=>>$id<<; ",
-                    "family=>>", $plugin{$id}{family}, "<<; ",
-                    "category=>>", $plugin{$id}{category}, "<<; ",
+                    "category=>>$category<<; ",
+                    "family=>>$family<<; ",
+                    "risk=>>$risk<<; ",
                     "use=>>$use<<\n" if $DEBUG;
     # nb: status is used to track both old and new status.
     $plugin{$id}{status} = ($use eq 'yes') * 10;
@@ -522,6 +656,7 @@ if ($summary) {
         print "  Id:       ", $id, "\n",
               "  Name:     ", ($plugin{$id}{name}     || 'n/a'), "\n",
               "  Family:   ", ($plugin{$id}{family}   || 'n/a'), "\n",
+              "  Risk:     ", ($plugin{$id}{risk}     || 'n/a'), "\n",
               "  Category: ", ($plugin{$id}{category} || 'n/a'), "\n",
               "  Summary:  ", ($plugin{$id}{summary}  || 'n/a'), "\n",
               "  Version:  ", ($plugin{$id}{version}  || 'n/a'), "\n",

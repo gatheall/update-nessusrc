@@ -11,6 +11,14 @@
 <!--#endif -->
 
 
+<H4 ALIGN="center">
+   <A HREF="/">TifaWARE</A> |
+   <A HREF="../">Perl Programs</A> |
+   update-nessusrc
+</H4>
+                                                                                
+                                                                                
+<HR>
 <H2>update-nessusrc</H2>
 
 <H3>Introduction</H3>
@@ -25,10 +33,12 @@ suggests that one can configure Nessus to constantly scan a network with
 a continuously updated collection of plugins with minimal user
 interaction -- an extremely appealing notion!</P>
 
-<P>In practice, though, this notion doesn't work, at least not directly. 
-The reason is that each plugin must be listed in a client configuration
-file and that, out-of-the-box, the only way to update this file is via
-the GUI manually.</P>
+<P>In practice, though, this doesn't quite work, at least not directly. 
+The reason is that plugins not explicitly listed in the client
+configuration file -- eg, new plugins -- are enabled by default
+(unless you've enabled safe_checks, in which case dangerous plugins are
+disabled).  Further, the only way to update the configuration file
+out-of-the-box is via the GUI manually.</P>
 
 <P>To get around this shortcoming, I've written <B>update-nessusrc</B>,
 which queries a Nessus server for its list of available plugins and
@@ -72,9 +82,10 @@ SANS Top 20 List.</P>
       <CODE>$nessusd_port</CODE>, <CODE>$nessusd_user</CODE>, and
       <CODE>$nessusd_user_pass</CODE>, and <CODE>$proxy</CODE> according 
       to your environment. Also, you may wish to adjust the location of 
-      the perl interpreter in the first line, <CODE>@plugin_cats</CODE>, 
-      <CODE>@plugin_fams</CODE>, <CODE>@plugin_excludes</CODE>, and/or 
-      <CODE>@plugin_includes</CODE> to suit your tastes.</LI>
+      the perl interpreter in the first line, <CODE>$ENV{PATH}</CODE>,
+      <CODE>@plugin_cats</CODE>, <CODE>@plugin_fams</CODE>, 
+      <CODE>@plugin_excludes</CODE>, <CODE>@plugin_includes</CODE>, 
+      and/or <CODE>@plugin_risks</CODE> to suit your tastes.</LI>
 </OL>
 
 
@@ -83,7 +94,8 @@ SANS Top 20 List.</P>
 <P>The script offers considerable control in the selection of plugins -
 either by editing variables in the script or by commandline arguments,
 you can include entire categories and families of plugins, include
-specific plugins, or exclude specific plugins.</P>
+specific plugins, exclude specific plugins, or even include based on
+the risk factor of the vulnerabilities scanned for by plugins.</P>
 
 <P>There are several commandline arguments you can use to override 
 variables defined in the script itself:</P>
@@ -92,8 +104,9 @@ variables defined in the script itself:</P>
 <DL>
    <DT>-c, --categories &lt;plugin categories&gt;</DT>
    <DD>Enable plugins in the specified categories, overriding
-      <CODE>@plugin_cats</CODE>. As a special case, <CODE>_all_</CODE>
-      represents all plugin categories.</DD>
+      <CODE>@plugin_cats</CODE>. <CODE>_all_</CODE> can be used to
+      represent all plugin categories and <CODE>!</CODE> to skip
+      specific ones.</DD>
 
    <DT>-d, --debug</DT>
    <DD>Display debugging messages while running.  Creates a scratch
@@ -102,12 +115,22 @@ variables defined in the script itself:</P>
 
    <DT>-f, --families &lt;plugin families&gt;</DT>
    <DD>Enable plugins in the specified families, overriding
-      <CODE>@plugin_fams</CODE>. As a special case, <CODE>_all_</CODE>
-      represents all plugin families.</DD>
+      <CODE>@plugin_fams</CODE>. <CODE>_all_</CODE> can be used to
+      represent all plugin families and <CODE>!</CODE> to skip
+      specific ones.</DD>
 
    <DT>-i, --includes &lt;plugin ids&gt;</DT>
    <DD>Include the specified plugin ids, overriding 
-      <CODE>@plugin_includes</CODE>.</DD>
+      <CODE>@plugin_includes</CODE>. <CODE>_all_</CODE> can be used
+      to represent all plugin ids and <CODE>!</CODE> to skip
+      specific ones.</DD>
+
+   <DT>-r, --risks &lt;risk factors&gt;</DT>
+   <DD>Enable plugins that scan for vulnerabilities with the specified risk 
+      factors, overriding <CODE>@plugin_risks</CODE>. <B>Note:</B> unlike
+      other options, risk factors specified are regarded as regular 
+      expressions and matched case-insensitively against the risk factors
+      appearing in plugin descriptions.</DD>
 
    <DT>-s, --summary</DT>
    <DD>Display a summary of the changes, detailing plugins added, removed,
@@ -120,7 +143,9 @@ variables defined in the script itself:</P>
 
    <DT>-x, --excludes &lt;plugin ids&gt;</DT>
    <DD>Exclude the specified plugin ids, overriding 
-      <CODE>@plugin_excludes</CODE>.</DD>
+      <CODE>@plugin_excludes</CODE>.  <CODE>_all_</CODE> can be used
+      to represent all plugin ids and <CODE>!</CODE> to skip
+      specific ones.</DD>
 </DL>
 </BLOCKQUOTE>
 
@@ -130,17 +155,21 @@ variables defined in the script itself:</P>
       HREF="http://cgi.nessus.org/plugins/">http://cgi.nessus.org/plugins/</A>;
       for plugin families, see 
       <A HREF="http://cgi.nessus.org/plugins/dump.php3?viewby=family">http://cgi.nessus.org/plugins/dump.php3?viewby=family</A>; 
-      and for plugin categories, see the file <CODE>doc/WARNING.En</CODE>
-      in the nessus-core source.  Possible category and family names will
-      both change over time, especially the latter: category names may vary 
-      with the version of Nessus you use while family names are specified 
+      and for plugin categories, see the file <CODE>doc/WARNING.En</CODE> in 
+      the nessus-core source. Unfortunately, risk factors are not (yet?)
+      standardized; while <CODE>Low</CODE>, <CODE>Medium</CODE>, and
+      <CODE>High</CODE> are common ones, they are by far from the only
+      ones used. Further, some risk factors depend on the outcome of
+      the plugin. Possible category and family names will both change over 
+      time, especially the latter: category names may vary with the 
+      version of Nessus you use while family names are specified 
       by plugin writers as an arbitrary string using the 
       <CODE>script_family</CODE> function. Thus, you may wish to 
       periodically review the specific categories and families you use with
       this script.
 
-   <LI>Nessus always runs plugins in the category <CODE>settings</CODE>
-      regardless of what's in the configuration file.  These plugins
+   <LI>Nessus will run plugins in the category <CODE>settings</CODE> as
+      needed regardless of what's in the configuration file.  These plugins
       only update the knowledge bases; they do not actually send any 
       packets.</LI>
 
@@ -148,22 +177,23 @@ variables defined in the script itself:</P>
       script. For example, you can disable all plugin categories by using
       the commandline argument <CODE>-c ""</CODE>.</LI>
 
-   <LI><B>Plugin categories and families are considered together when 
-      deciding whether to include plugins.</B>  For example, choosing
-      <CODE>-c denial -f "SMTP problems"</CODE> will run only denial of
-      service attacks specifically associated with SMTP servers.</LI>
+   <LI><B>Plugin categories, families, and risk factors are considered 
+      together when deciding whether to include plugins.</B>  For example, 
+      choosing <CODE>-c denial -f "SMTP problems" -r "High"</CODE> will 
+      run only denial of service attacks for high-risk vulnerabilities 
+      specifically associated with SMTP servers.</LI>
 
    <LI>The <CODE>'--top20'</CODE> option on one hand and the 
-      <CODE>'--categories'</CODE> and <CODE>'--families'</CODE> options
-      on the other are mutually exclusive.</LI>
+      <CODE>'--categories'</CODE>, <CODE>'--families'</CODE>, and
+      <CODE>'--risks'</CODE> options on the other are mutually exclusive.</LI>
 
    <LI>Plugins explicitly excluded will never be used regardless of the other
       variables or commandline options.</LI>
 
-   <LI>Multiple categories / families / plugin ids can be specified either by
-      a comma-delimited string or by multiple argument pairs.  For example,
-      <CODE>-c "settings,infos"</CODE> is equivalent to <CODE>-c settings -c
-      infos</CODE>.</LI>
+   <LI>Multiple categories / families / risks / plugin ids can be specified 
+      either by a comma-delimited string or by multiple argument pairs.  
+      For example, <CODE>-c "settings,infos"</CODE> is equivalent to 
+      <CODE>-c settings -c infos</CODE>.</LI>
 </UL>
 
 <P>Examples:</P>
@@ -171,7 +201,7 @@ variables defined in the script itself:</P>
 <DL>
    <DT><CODE>update-nessusrc ~/.nessusrc</CODE></DT>
    <DD>updates default nessusrc w/ non-destructive plugins and ping /
-      nmap_wrapper scanners.</DD>
+      tcp connect() scanners.</DD>
 
    <DT><CODE>update-nessusrc -s ~/.nessusrc</CODE></DT>
    <DD>same as above but also print a summary of the changes.</DD>
@@ -184,8 +214,16 @@ variables defined in the script itself:</P>
    <DD>updates a special nessusrc w/ DoS plugins and tcp connect() scanner.</DD>
 
    <DT><CODE>update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp</CODE></DT>
-   <DD>updates a special nessusrc w/ all categories of plugins associated with
-      SMTP servers.</DD>
+   <DD>updates a special nessusrc w/ plugins associated with SMTP servers in
+      all categories.</DD>
+
+   <DT><CODE>update-nessusrc -c "_all_" -c !destructive_attack -f "SMTP problems" ~/.nessusrc-smtp</CODE></DT>
+   <DD>updates a special nessusrc w/ plugins associated with SMTP servers in
+      all categories except destructive_attack.</DD>
+
+   <DT><CODE>update-nessusrc -r "(Critical|High)" ~/.nessusrc-dos</CODE></DT>
+   <DD>updates a special nessusrc w/ plugins that scan only for critical-
+      and high-risk vulnerabilities.</DD>
 
    <DT><CODE>update-nessusrc -t ~/.nessusrc-top20</CODE></DT>
    <DD>updates a special nessusrc to scan for the SANS Top 20 
@@ -197,6 +235,27 @@ variables defined in the script itself:</P>
 <H3>Known Bugs and Caveats</H3>
 
 <P>Currently, I am not aware of any bugs in this script.</P>
+
+<P>Warning messages similar to the following:
+
+<BLOCKQUOTE>
+<PRE>Malformed UTF-8 character (unexpected continuation byte 0xae, with no
+preceding start byte) in pattern match (m//) at ./update-nessusrc
+line 356, &lt;CMD&gt; line 277.</PRE>
+</BLOCKQUOTE>
+
+arise due to your system's support of Unicode (typically under RedHat
+8). You can avoid such warnings by adding the following line:
+
+<BLOCKQUOTE>
+<PRE>use open IN =&gt; ':raw';</PRE>
+</BLOCKQUOTE>
+
+after the line that reads:
+
+<BLOCKQUOTE>
+<PRE>use strict;</PRE>
+</BLOCKQUOTE>
 
 <P>This script is not a substitute for the Nessus client in terms of
 managing a configuration file or server certificates.  On one hand, it
@@ -210,9 +269,9 @@ if you are using SSL to encrypt client-server communications, you will
 need to run the client at least once to connect to the server and accept
 the certificate it presents, otherwise, <B>update-nessusrc</B> will hang
 when run.  One way to do this is to run <B>update-nessusrc</B> in debug
-mode and break out of it when it displays the server's certificate;
-then, run the client manually using the same commandline as reported by
-<B>update-nessusrc</B>.</P>
+mode, note the nessus commandline it runs, break out of it when
+it displays the server's certificate, and then run the client manually
+using the same commandline noted earlier.</P>
 
 <P>To ensure an accurate scan for the SANS' Top 20 Vulnerabilities, you
 must make sure <CODE>auto_enable_dependencies</CODE> is set to
@@ -241,6 +300,38 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Version </TH>
       <TH ALIGN="left">Verification </TH>
       <TH ALIGN="left">Notes<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="left" VALIGN="top">15-Aug-2003 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.10">2.10</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="update-nessusrc-2.10.md5">MD5</A> / 
+         <A HREF="update-nessusrc-2.10.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Added support for bundling commandline options; eg, 
+            <CODE>-ds</CODE> is the same as <CODE>-d -s</CODE>.</LI>
+         <LI>Added ability to negate categories, families, and/or plugin 
+            ids so you can say something like <CODE>-f _all_ -f 
+            !CISCO</CODE> to use plugins from all families except CISCO. 
+            Also, extended use of <CODE>_all_</CODE> to plugins included 
+            or excluded.</LI>
+         <LI>Added ability to select by risk factor of the vulnerability
+            scanned for by the plugin. [Suggested by Phil Agcaoili.]</LI>
+         <LI>Added warnings about any plugin categories, families, ids, or
+            risks selected but not available via the Nessus server.</LI>
+         <LI>Changed defaults for <CODE>@plugins_cats</CODE> and 
+            <CODE>@plugins_fams</CODE> so that all non-dangerous plugins 
+            are enabled by default in a manner that does not rely on 
+            explicitly listing category and/or family names. Also, 
+            changed default scanner from nmap to tcp connect() in 
+            <CODE>@plugin_includes</CODE>.</LI>
+         <LI>Changed code to provide help rather than complain about a 
+            non-existent configuration file if none is specified on the
+            commandline.</LI>
+         <LI>Changed code to strip extraneous information from the version 
+            string and also include the risk factor of the vulnerability 
+            scanned for by a plugin when summarizing changes.</LI>
+      </UL></TD>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">30-May-2003 </TH>
@@ -318,6 +409,15 @@ it under the same terms as Perl itself.</P>
 </TABLE>
 </CENTER>
 
+
+<HR>
+<H4 ALIGN="center">
+   <A HREF="/">TifaWARE</A> |
+   <A HREF="../">Perl Programs</A> |
+   update-nessusrc
+</H4>
+                                                                                
+                                                                                
 <!--#include virtual="/footer.html" -->
 <!--#if expr="$weblint" -->
 </BODY>
