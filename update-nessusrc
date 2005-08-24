@@ -5,7 +5,7 @@
 #
 # Written by George A. Theall, theall@tifaware.com
 #
-# Copyright (c) 2004, George A. Theall. All rights reserved.
+# Copyright (c) 2003 - 2005, George A. Theall. All rights reserved.
 #
 # This module is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
@@ -129,6 +129,16 @@ they're included as part of the C<LWP library>
 
 Currently, I am not aware of any bugs in this script. 
 
+As of August 2005, SANS appears to be adjusting their content based on
+the I<browser's> user agent and, in the case of my script, it redirects
+to a non-existent page.  A work-around is to change the user-agent
+string, C<$useragent>, to something more common; eg,
+
+  Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.7.10) Gecko/20050716 Firefox/1.0.6
+
+You can make the change either in the script itself or in the file
+C<~/.update-nessusrc>. 
+
 This script is not a substitute for the Nessus client in terms of
 managing a configuration file.  On one hand, it requires that a
 configuration file already exists.  On the other, several plugins
@@ -226,8 +236,7 @@ my $script_config = $ENV{HOME} .            # config file for update-nessusrc it
 our $summary = 0;                           # Print summary report?
 our $timeout = 120;                         # timeout used w/ http GET
 our $top20_url = 'http://www.sans.org/top20/';  # location of SANS Top20
-our $useragent = 'update-nessusrc/2.33' .   # used when requesting SANS Top20
-                    ' (http://www.tifaware.com/perl/update-nessusrc/)';
+our $useragent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.7.10) Gecko/20050716 Firefox/1.0.6';
 
 
 ############################################################################
