@@ -76,7 +76,7 @@ library</A>.</P>
 HREF="http://www.edgeos.com/software/">update-nessusrc</A>, written by
 Jay Jacobson.  Currently, it offers functionality similar to this
 script except it does not support generating config files based on the
-SANS Top 20 List.</P>
+SANS Top 20 Vulnerabilities list.</P>
 
 
 <H3>Installation</H3>
@@ -271,6 +271,21 @@ variables defined in the script or the script configuration file:</P>
 
 <P>Currently, I am not aware of any bugs in this script.</P>
 
+<P>As of August 2005, SANS appears to be adjusting their content based
+on the <I>browser's</I> user agent and, in the case of my script, it
+redirects to a non-existent page.  A work-around is to change the
+user-agent string, <CODE>$useragent</CODE>, to something more common;
+eg,
+
+<BLOCKQUOTE>
+<PRE>
+  Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.7.10) Gecko/20050716 Firefox/1.0.6
+</PRE>
+</BLOCKQUOTE>
+
+<P>You can make the change either in the script itself or in the file
+<CODE>~/.update-nessusrc</CODE>.</P>
+
 <P>This script is not a substitute for the Nessus client in terms of
 managing a configuration file.  On one hand, it requires that a
 configuration file already exists.  On the other, several plugins
@@ -299,7 +314,7 @@ protect them accordingly!</P>
 
 <H3>Copyright and License</H3>
 
-<P>Copyright (c) 2003 - 2004, George A. Theall.<BR>
+<P>Copyright (c) 2003 - 2005, George A. Theall.<BR>
 All rights reserved.</P>
 
 <P>This script is free software; you can redistribute it and/or modify
@@ -315,6 +330,17 @@ it under the same terms as Perl itself.</P>
       <TH ALIGN="left">Version </TH>
       <TH ALIGN="left">Verification </TH>
       <TH ALIGN="left">Notes<BR></TH>
+   </TR>
+   <TR>
+      <TH ALIGN="left" VALIGN="top">24-Aug-2005 </TH>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.34">2.34</A> </TD>
+      <TD ALIGN="left" VALIGN="top"><A HREF="/code/update-nessusrc/update-nessusrc-2.34.md5">MD5</A> / 
+         <A HREF="/code/update-nessusrc/update-nessusrc-2.34.asc">GPG</A> </TD>
+      <TD ALIGN="left" VALIGN="top">
+      <UL>
+         <LI>Changed user-agent string to something more common to avoid
+            problems when requesting the SANS Top 20.</LI>
+      </UL></TD>
    </TR>
    <TR>
       <TH ALIGN="left" VALIGN="top">11-Oct-2004 </TH>
