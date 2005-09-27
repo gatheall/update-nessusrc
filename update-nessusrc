@@ -505,8 +505,9 @@ while (<CMD_READ>) {
         #     for by the plugin.
         if ($label eq 'description') {
             my $risk = 'n/a';
-            if (/.+(Risk|Risk factor)\s*:\s*(.+?)\s*(\\n|$)/is) {
-                $risk = $2;
+            if (/.+(Risk|Risk\s+factor)\s*:\s*(\\n)*(\S+\s+\/\s+CVSS .+?\\n\(.+\)|.+?)\s*(\\n|$)/is) {
+                $risk = $3;
+                $risk =~ s/\s*\\n\s*/ /g;
             }
             $plugin{$id}{risk} = $risk;
             warn "debug:     risk=>>$risk<<\n" if $DEBUG;
