@@ -465,9 +465,8 @@ while (<CMD_READ>) {
                   "\n",
                   "Do you accept it ? (y/n) ";
             my $ans;
-            do {
-                chomp($ans = <STDIN>);
-            } until ($ans =~ /^[yn]$/);
+            chomp($ans = <STDIN>);
+            $ans = 'n' unless ($ans eq 'y');
             # Send answer along to nessus.
             print CMD_WRITE "$ans\n";
             # If cert was not accepted, exit. NB: nessus itself will
