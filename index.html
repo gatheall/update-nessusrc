@@ -269,7 +269,12 @@ variables defined in the script or the script configuration file:</P>
 
 <H3>Known Bugs and Caveats</H3>
 
-<P>Currently, I am not aware of any bugs in this script.</P>
+<P>This script may hang indefinitely if <CODE>paranoia_level</CODE> is
+not set in your config file or it is set but the SSL certificate
+presented by the server has changed for some reason.  If this happens,
+run <CODE>nessus</CODE> manually and resolve SSL_paranoia / certificate
+issue outside of this script, at least until I can figure out a
+satisfactory way to handle such cases.</P>
 
 <P>As of August 2005, SANS appears to be adjusting their content based
 on the <I>browser's</I> user agent and, in the case of my script, it
