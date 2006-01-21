@@ -196,7 +196,7 @@ use Safe 2.0;
 #     defined in a script configuration file.
 $| = 1;
 delete @ENV{qw(IFS CDPATH ENV BASH_ENV)};   # Make %ENV safer
-$ENV{PATH} = '/usr/bin:/usr/local/bin';     # nb: should be where nessus is.
+$ENV{PATH} = '/opt/nessus/bin:/usr/bin:/usr/local/bin'; # nb: should be where nessus is.
 our $DEBUG = 0;
 our $nessusd_host;
 our $nessusd_port = 1241;                   # nb: you may need to change this!
@@ -379,7 +379,7 @@ if ($options{help}) {
         "  -r, --risks <risks>        Enable plugins that scan for vulnerabilities\n",
         "                               with the specified risk factors, which\n",
         "                               should be regular expressions.\n",
-        "  -s, --summary              Display summary of chagnes.\n",
+        "  -s, --summary              Display summary of changes.\n",
         "  -t, --top20                Include plugins to scan for the SANS Top 20\n",
         "                               Vulnerabilities. Can not be combined with\n",
         "                               '--categories', '--families', or '-risks'.\n",
