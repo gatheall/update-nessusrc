@@ -26,12 +26,10 @@
 <P><A HREF="http://www.nessus.org/">Nessus</A> is a high-quality and
 free remote vulnerability scanner.  While its initial cost is certainly
 attractive, arguably its main advantage is its extensive and continually
-evolving plugin database of vulnerability checks.  Additionally, the
-discussion about <A
-HREF="http://www.nessus.org/doc/detached_scan.html">detached scans</A>,
-suggests that one can configure Nessus to constantly scan a network with
-a continuously updated collection of plugins with minimal user
-interaction -- an extremely appealing notion!</P>
+evolving plugin database of vulnerability checks.  Additionally, one can
+configure Nessus to constantly scan a network with a continuously
+updated collection of plugins with minimal user interaction -- an
+extremely appealing notion!</P>
 
 <P>In practice, though, this doesn't quite work, at least not directly. 
 The reason is that plugins not explicitly listed in the client
@@ -72,11 +70,10 @@ distribution so you may need to install them yourself; they're included
 as part of the <A HREF="http://search.cpan.org/dist/libwww-perl/">LWP
 library</A>.</P>
 
-<P>Note: there is also a Python script named <A
-HREF="http://www.edgeos.com/software/">update-nessusrc</A>, written by
-Jay Jacobson.  Currently, it offers functionality similar to this
-script except it does not support generating config files based on the
-SANS Top 20 Vulnerabilities list.</P>
+<P>Note: Jay Jacobson of <A HREF="http://www.edgeos.com/">Edgeos</A>
+wrote a Python script, also named update-nessusrc, that offers
+functionality similar to this script. I'm not sure it's still
+available, though.</P>
 
 
 <H3>Installation</H3>
@@ -178,10 +175,8 @@ variables defined in the script or the script configuration file:</P>
 
 <P>Notes:</P>
 <UL>
-   <LI>For a list of all plugin ids, see <A
-      HREF="http://cgi.nessus.org/plugins/">http://cgi.nessus.org/plugins/</A>;
-      for plugin families, see 
-      <A HREF="http://cgi.nessus.org/plugins/dump.php3?viewby=family">http://cgi.nessus.org/plugins/dump.php3?viewby=family</A>; 
+   <LI>For a list of plugin families, see <A
+      HREF="http://www.nessus.org/plugins/index.php?view=all">http://www.nessus.org/plugins/index.php?view=all</A>;
       and for plugin categories, see the file <CODE>doc/WARNING.En</CODE> in 
       the nessus-core source. Unfortunately, risk factors are not
       standardized; while <CODE>Low</CODE>, <CODE>Medium</CODE>, and
