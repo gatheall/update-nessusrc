@@ -231,8 +231,9 @@ our $proxy = '';
 # our $proxy = 'http://proxy1.domain.com';
 #     - authenticated as user 'user' w/ password 'pass' via proxy2.domain.com.
 # our $proxy = 'http://user:pass@proxy2.domain.com';
-my $script_config = $ENV{HOME} .            # config file for update-nessusrc itself.
-    '/.update-nessusrc';
+my $script_config =                         # config file for update-nessusrc itself.
+    (exists $ENV{HOME} ? $ENV{HOME} : '') .
+        '/.update-nessusrc';
 our $summary = 0;                           # Print summary report?
 our $timeout = 120;                         # timeout used w/ http GET
 our $top20_url = 'http://www.sans.org/top20/';  # location of SANS Top20
