@@ -265,11 +265,14 @@ variables defined in the script or the script configuration file:</P>
 <H3>Known Bugs and Caveats</H3>
 
 <P>This script may hang indefinitely if <CODE>paranoia_level</CODE> is
-not set in your config file or it is set but the SSL certificate
-presented by the server has changed for some reason.  If this happens,
-run <CODE>nessus</CODE> manually and resolve SSL_paranoia / certificate
-issue outside of this script, at least until I can figure out a
-satisfactory way to handle such cases.</P>
+not set in your config file (for example, if you've exported a policy
+from NessusClient 3.2+) or it is set but the SSL certificate presented
+by the server has changed for some reason.  If this happens, either
+update the script so it calls the client with <CODE>-x</CODE>, which
+disables certificate verification, or run <CODE>nessus</CODE> manually
+and resolve SSL_paranoia / certificate issue outside of this script, at
+least until I can figure out a satisfactory way to handle such
+cases.</P>
 
 <P>As of August 2005, SANS appears to be adjusting their content based
 on the <I>browser's</I> user agent and, in the case of my script, it
