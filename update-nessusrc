@@ -90,12 +90,6 @@ precedence over variables defined in the script or a separate
 configuration file; thus, for example, you can disable all plugin
 categories by using the commandline argument C<-c "">. 
 
-For a list of plugin ids, see L<http://cgi.nessus.org/plugins/>; for
-plugin families, see
-L<http://cgi.nessus.org/plugins/dump.php3?viewby=family>; and for plugin
-categories, see the file L<doc/WARNING.En> in the nessus-core source. 
-Unfortunately, risk factors are not (yet?) standardized. 
-
 Other settings include:
 
     Variable            Commandline         Purpose
@@ -173,8 +167,8 @@ files.
 
 =head1 SEE ALSO
 
-L<nessus-update-plugins(5)>, L<http://cgi.nessus.org/plugins/>,
-L<http://www.tifaware.com/perl/update-nessusrc/>.
+L<nessus-update-plugins(5)>, L<http://www.nessus.org/plugins/>,
+L<http://www.tifaware.com/perl/update-nessusrc/>. 
 
 =cut
 
