@@ -428,9 +428,16 @@ croak "Can't determine nessus version!\n" unless ($nessus_version);
 warn "debug:   nessus version is >>$nessus_version<<.\n" if $DEBUG;
 
 # nb: there are 9 fields in Nessus v1.1.13 - 2.0.7; 
-#     11 in later versions.
+#     11 in versions 2.0.8 - 3.x;
+#     8 in versions 4.x.
 warn "debug: determining number of available fields in plugins list output.\n" if $DEBUG;
-my $nfields = ($nessus_version =~ /^(1\.|2\.0\.[0-7])/) ? 9 : 11;
+my $nfields = 11;
+if ($nessus_version =~ /^(1\.|2\.0\.[0-7])/) {
+    $nfields = 9;
+}
+elsif ($nessus_version =~ /^4\./) {
+    $nfields = 8;
+}
 warn "debug:   $nfields available fields in plugins list output.\n" if $DEBUG;
 
 warn "debug: getting list of available plugins.\n" if $DEBUG;
@@ -487,19 +494,18 @@ while (<CMD_READ>) {
     my($id, @fields) = split(/\|/, $_, $nfields);
     croak "Can't parse plugins list ($_)!\n" unless (@fields == ($nfields-1));
     warn "debug:     id=>>$id<<\n" if $DEBUG;
-    foreach my $label (
+    my @field_names = (
                 'family', 
                 'name', 
                 'category', 
                 'copyright', 
                 'summary', 
                 'version', 
-                'cve-id', 
-                ($nfields == 9 ? 
-                    'description' : 
-                    ('bugtraq-id', 'xref', 'description')
-                )
-            ) {
+    );
+    push(@field_names, 'cve-id') if ($nfields == 9);
+    push(@field_names, 'cve-id', 'bugtraq-id', 'xref') if ($nfields == 11);
+    push(@field_names, 'description');
+    foreach my $label (@field_names) {
         $_ = shift @fields;
         # nb: determine the risk factor of the vulnerability scanned 
         #     for by the plugin.
@@ -507,7 +513,8 @@ while (<CMD_READ>) {
             my $risk = 'n/a';
             if (/.+(Risk|Risk\s+factor)\s*:\s*(\\n)*(\S+\s+\/\s+CVSS .+?\\n\(.+\)|.+?)\s*(\\n|$)/is) {
                 $risk = $3;
-                $risk =~ s/\s*\\n\s*/ /g;
+                $risk =~ s/\s*(;|\\n)\s*/ /g;
+                $risk =~ s/^\s*(\S.*)\s*$/$1/g;
             }
             $plugin{$id}{risk} = $risk;
             warn "debug:     risk=>>$risk<<\n" if $DEBUG;
