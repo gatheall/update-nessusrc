@@ -5,7 +5,7 @@
 #
 # Written by George A. Theall, theall@tifaware.com
 #
-# Copyright (c) 2003-2009, George A. Theall. All rights reserved.
+# Copyright (c) 2003-2010, George A. Theall. All rights reserved.
 #
 # This module is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself.
@@ -413,7 +413,7 @@ while (<CMD>) {
     chomp;
     warn "debug:   reading >>$_<<\n" if $DEBUG;
 
-    $nessus_version = $1 if (/nessus .+ (\S+) for /);
+    $nessus_version = $1 if (/nessus .+ (\S+) (\[build|for) /);
 }
 close(CMD);
 my $rc = $? >> 8;
