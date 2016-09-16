@@ -50,9 +50,6 @@ update-nessusrc - Updates Nessus configuration file with new plugins.
   #   and high-risk vulnerabilities.
   update-nessusrc -r "(Critical|High)" ~/.nessusrc-risky
 
-  # updates a special nessusrc to scan for SANS Top 20 Vulnerabilities.
-  update-nessusrc -t ~/.nessusrc-top20
-
 
 =head1 DESCRIPTION
 
@@ -80,7 +77,6 @@ one or more configurable variables or by commandline arguments.
     @plugin_excludes    -x|--excludes       Excludes plugin ids explicitly.
     @plugin_includes    -i|--includes       Includes plugin ids explicitly.
     @plugin_risks       -r|--risks          Enables plugin based on risk factors.
-    n/a                 -t|--top20          Enables plugins for SANS Top 20.
 
 Plugins explicitly excluded will never be used regardless of the other
 variables or commandline options.  Also, commandline arguments take
@@ -119,37 +115,13 @@ they're included as part of the C<LWP library>
 
 =head1 KNOWN BUGS AND CAVEATS
 
-Currently, I am not aware of any bugs in this script. 
-
-As of August 2005, SANS appears to be adjusting their content based on
-the I<browser's> user agent and, in the case of my script, it redirects
-to a non-existent page.  A work-around is to change the user-agent
-string, C<$useragent>, to something more common; eg,
-
-  Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.7.10) Gecko/20050716 Firefox/1.0.6
-
-You can make the change either in the script itself or in the file
-C<~/.update-nessusrc>. 
+Currently, I am not aware of any bugs in this script.
 
 This script is not a substitute for the Nessus client in terms of
 managing a configuration file.  On one hand, it requires that a
 configuration file already exists.  On the other, several plugins
 require additional configuration - simply adding them to the list of
 plugins used may not be optimal. 
-
-There is a limit to the size of the arguments passed to
-C<script_cve_id()>, which sets the CVE IDs of the flaws tested by each
-plugin.  Additional CVE IDs, which by convention are listed in comments,
-are not handled by this script since they can not be reliably
-identified.  Thus, you would do well to review the report of Top 20
-Vulnerabilities for which no plugins were found and update the
-configuration file manually after examining plugins available on your
-server.  Otherwise, you risk generating a configuration file that's not
-quite comprehensive. 
-
-To ensure an accurate scan for the SANS Top 20 Vulnerabilities, you must
-make sure C<auto_enable_dependencies> is set to C<yes> in the
-configuration file; B<update-nessusrc> will B<not> do this for you. 
 
 Finally, realize that this script along with its script configuration
 files may hold userids and passwords used to connect to a Nessus server;
@@ -228,7 +200,6 @@ my $script_config =                         # config file for update-nessusrc it
         '/.update-nessusrc';
 our $summary = 0;                           # Print summary report?
 our $timeout = 120;                         # timeout used w/ http GET
-our $top20_url = 'http://www.sans.org/top20/';  # location of SANS Top20
 our $useragent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.7.10) Gecko/20050716 Firefox/1.0.6';
 
 
@@ -266,7 +237,6 @@ if (-r $script_config) {
         'proxy',
         'summary',
         'timeout',
-        'top20_url',
         'useragent',
     ) {
         local *symname = $sandbox->varglob($var);
@@ -348,14 +318,9 @@ GetOptions(
     "includes|i=s@",
     "risks|r=s@",
     "summary|s!",
-    "top20|t!",
 ) or $options{help} = 1;
 my $rcfile = shift || '';
-$options{help} = 1 
-    if (
-        $options{top20} and ($options{categories} or $options{families}) or
-        !$rcfile
-    );
+$options{help} = 1 if (!$rcfile);
 $0 =~ s/^.+\///;
 if ($options{help}) {
     warn "\n",
@@ -373,9 +338,6 @@ if ($options{help}) {
         "                               with the specified risk factors, which\n",
         "                               should be regular expressions.\n",
         "  -s, --summary              Display summary of changes.\n",
-        "  -t, --top20                Include plugins to scan for the SANS Top 20\n",
-        "                               Vulnerabilities. Can not be combined with\n",
-        "                               '--categories', '--families', or '-risks'.\n",
         "  -x, --excludes <ids>       Disable specified plugin ids.\n";
     exit(9);
 }
@@ -657,75 +619,6 @@ foreach my $id (@plugin_excludes, @plugin_includes) {
 ############################################################################
 # Determine whether plugins should now be enabled.
 #
-# - if Top 20 option selected, generate list of plugins to use dynamically.
-if ($options{top20}) {
-    use LWP::UserAgent;
-
-    # Retrieve Top 20 list.
-    if ($DEBUG) {
-        warn "debug: retrieving '$top20_url'.\n";
-        require LWP::Debug; import LWP::Debug qw(+);
-    }
-
-    my $ua = LWP::UserAgent->new(
-        agent => $useragent,
-        timeout => $timeout,
-    );
-    if (defined($proxy)) {
-        $ua->proxy('http', $proxy);
-    }
-    my $response = $ua->get(
-        $top20_url,
-    );
-    unless ($response->is_success) {
-        croak "*** can't retrieve '$top20_url' - ", $response->status_line, "! ***\n";
-    }
-
-    # Extract CVE / CAN numbers.
-    #
-    # nb: parsing the HTML would ensure accuracy, but errors in the
-    #     HTML suggest a simpler approach.
-    #
-    # nb: keep in mind CVE / CAN numbers may be duplicated since the top 
-    #     20 list is actually two top 10 lists (for Windows and Unix).
-    my(%top20_cves, %unique);
-    my @top20_cves = grep(
-        !/(CVE|CAN)$/i && ($_ = uc($_)) && !$unique{$_}++,
-        sort($response->content =~ /http:\/\/.+\b((cve|can)-\d{4}-\d{4})\b/ig)
-    );
-
-    # Update arrays to use plugins associated with Top 20 vulnerabilities.
-    @plugin_cats = ('settings');
-    @plugin_fams = ('Settings');
-    @plugin_risks = ('.');
-    foreach my $id (keys %plugin) {
-        next unless (exists $plugin{$id}{'cve-id'});
-        my $cve = $plugin{$id}{'cve-id'};
-        foreach my $top20_cve (@top20_cves) {
-            if ($cve =~ /\b$top20_cve\b/i) {
-                $top20_cves{$top20_cve} .= "$id & ";
-                push(@plugin_includes, $id);
-            }
-        }
-    }
-    if ($DEBUG) {
-        warn "debug: Top 20 vulnerabilities matched with plugins:\n";
-        foreach my $cve (sort keys %top20_cves) {
-            my $id = $top20_cves{$cve};
-            $id =~ s/ & $//;
-            warn "debug:   $cve -> plugin(s) $id\n";
-        }
-    }
-
-    if (grep(!exists $top20_cves{$_}, @top20_cves)) {
-        print "Note: No Plugins are Available for the Following Top 20 Vulnerabilities:\n",
-              "  ", join("\n  ", grep(!exists $top20_cves{$_}, @top20_cves)),
-            "\n",
-            "\n";
-    }
-}
-
-# - determine whether to enable available plugins.
 warn "debug: determining whether to enable plugins.\n" if $DEBUG;
 foreach my $id (@scanners_new, @plugins_new) {
     my $category = $plugin{$id}{category};

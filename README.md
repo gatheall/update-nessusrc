@@ -44,7 +44,6 @@ There are several commandline arguments you can use to override variables define
 | -i, --includes <plugin ids> | Include the specified plugin ids, overriding `@plugin_includes`. `_all_` can be used to represent all plugin ids, `!` to skip specific ones, and `x-y` to cover the range of plugins between ids _x_ and _y_ inclusive. |
 | -r, --risks <risk factors> | Enable plugins that scan for vulnerabilities with the specified risk factors, overriding `@plugin_risks`. *Note:* unlike other options, risk factors specified are regarded as regular expressions and matched case-insensitively against the risk factors appearing in plugin descriptions.
 | -s, --summary | Display a summary of the changes, detailing plugins added, removed, enabled, or disabled. |
-| -t, --top20 | Include plugins to scan for the [SANS Top 20 Vulnerabilities](http://www.sans.org/top20/). |
 | -x, --excludes <plugin ids> | Exclude the specified plugin ids, overriding `@plugin_excludes`.  `_all_` can be used to represent all plugin ids, `!` to skip specific ones, and `x-y` to cover the range of plugins between ids _x_ and _y_ inclusive. |
 
 Notes:
@@ -53,7 +52,7 @@ Notes:
 * Commandline arguments take precedence over variables defined in a script configuration file, which in turn take precedence over variables defined in the script itself. For example, you can disable all plugin categories by using the commandline argument `-c ""`.
 * *Plugin categories, families, and risk factors are considered together when deciding whether to include plugins.*  For example, choosing `-c denial -f "SMTP problems" -r "High"` will run only denial of service attacks for high-risk vulnerabilities specifically associated with SMTP servers.
 * To negate a range of plugin ids, prefix the first id only with '!'; eg, `!10000-100010`.
-* Nessus will run plugins in the category `settings` as needed regardless of what's in the configuration file.  These plugins only update the knowledge bases; they do not actually send any packets.
+* Nessus will run plugins in the category `settings` as needed regardless of what's in the configuration file.  These plugins are required to initialize knowledge bases; they do not generally send any packets.
 * The `'--top20'` option on one hand and the '--categories'`, `'--families'`, and `'--risks'` options on the other are mutually exclusive.
 * Plugins explicitly excluded will never be used regardless of the other variables or commandline options.
 * Multiple categories / families / risks / plugin ids can be specified  either by a comma-delimited string or by multiple argument pairs. For example, `-c "settings,infos"` is equivalent to `-c settings -c infos`.
@@ -70,24 +69,15 @@ Examples:
 | `update-nessusrc -c "_all_" -f "SMTP problems" ~/.nessusrc-smtp` | updates a special nessusrc w/ plugins associated with SMTP servers in all categories. |
 | `update-nessusrc -c "_all_" -c !destructive_attack -f "SMTP problems" ~/.nessusrc-smtp` | updates a special nessusrc w/ plugins associated with SMTP servers in all categories except destructive_attack. |
 | `update-nessusrc -r "(Critical|High)" ~/.nessusrc-risky` | updates a special nessusrc w/ plugins that scan only for critical- and high-risk vulnerabilities. |
-| `update-nessusrc -t ~/.nessusrc-top20` | Update a special nessusrc to scan for the SANS Top 20 Vulnerabilities. |
 
 
 ## Known Bugs and Caveats
 
 This script may hang indefinitely if `paranoia_level` is not set in your config file (for example, if you've exported a policy from NessusClient 3.2+) or it is set but the SSL certificate presented by the server has changed for some reason.  If this happens, either update the script so it calls the client with `-x`, which disables certificate verification, or run `nessus` manually and resolve SSL_paranoia / certificate issue outside of this script, at least until I can figure out a satisfactory way to handle such cases.
 
-As of August 2005, SANS appears to be adjusting their content based on the _browser's_ user agent and, in the case of my script, it redirects to a non-existent page.  A work-around is to change the user-agent string, `$useragent`, to something more common; eg,
-
->  Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.7.10) Gecko/20050716 Firefox/1.0.6
-
-You can make the change either in the script itself or in the file `~/.update-nessusrc`.
-
 This script is not a substitute for the Nessus client in terms of managing a configuration file.  On one hand, it requires that a configuration file already exists.  On the other, several plugins require additional configuration - simply adding them to the list of plugins used may not be optimal.
 
 There is a limit to the size of the arguments passed to `script_cve_id()`, which sets the CVE IDs of the flaws tested by each plugin.  Additional CVE IDs, which by convention are listed in comments, are not handled by this script since they can not be reliably identified.  Thus, you would do well to review the report of Top 20 Vulnerabilities for which no plugins were found and update the configuration file manually after examining plugins available on your server.  Otherwise, you risk generating a configuration file that's not as comprehensive as it could be.
-
-To ensure an accurate scan for the SANS Top 20 Vulnerabilities, you must make sure `auto_enable_dependencies` is set to `yes` in the configuration file; *update-nessusrc* will *_not_* do this for you.
 
 Finally, realize that this script along with its script configuration files may hold userids and passwords used to connect to a Nessus server; protect them accordingly!
 
